@@ -1,35 +1,28 @@
+# run at linux command line "xsct setup.tcl"
 set sdk_dir ./dma_test.sdk
 
-file delete -force $sdk_dir/.metadata
-file delete -force $sdk_dir/hw
-file delete -force $sdk_dir/bsp
+file delete -force $sdk_dir
 
 set hwproject "hw"
-set hwspec ../../implement/results/top.hdf
+set plat   ../../../fpga/implement/results/top.xsa
 set bsp "bsp"
 #set proc "ps7_cortexa9_0"
-set proc "psu_cortexr5_0"
+#set proc "psu_cortexr5_0"
+set proc "psu_cortexa53_0"
 set os "standalone"
-set application "sw"
 
-# Create workspace and import the project into
 setws $sdk_dir
 
-createhw -name $hwproject -hwspec $hwspec
+platform create -name "streamer" -hw $plat -proc $proc -os $os
 
-createbsp -name $bsp -hwproject $hwproject -proc $proc -os $os
+platform generate
 
-# Update the microprocessor software spec (MSS) and regenerate the BSP
-updatemss -mss $sdk_dir/$bsp/system.mss
-regenbsp -bsp $bsp
+domain create -name "streamer_domain" -os $os -proc $proc
 
-# Create new application project as Empty Application 
-createapp -name $application -app {Empty Application} -proc $proc -hwproject $hwproject -bsp $bsp -os $os
+app create -name test2 -platform streamer -domain streamer_domain -template "Empty Application"
+app create -name test3 -platform streamer -domain streamer_domain -template "Hello World"
 
-# add the libm math library to the linker script.
-configapp -app $application libraries m
+file link -symbolic $sdk_dir/test2/src/main.c ../../../src/main.c                                                                                                                                            
 
-# Clean and build all projects
-projects -clean
-projects -build
+#app build -all
 
