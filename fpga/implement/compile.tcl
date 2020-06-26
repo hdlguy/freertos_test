@@ -30,7 +30,7 @@ write_bitstream -force ./results/top.bit
 
 close_project
 
-exec bootgen -image bitstream.bif -arch zynqmp -o ./results/top.bit.bin -w
+#exec bootgen -image bitstream.bif -arch zynqmp -o ./results/top.bit.bin -w
 
 
 
