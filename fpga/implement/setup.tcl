@@ -2,9 +2,10 @@
 close_project -quiet
 file delete -force proj.xpr *.os *.jou *.log proj.srcs proj.cache proj.runs
 #
-create_project -force -part xczu3eg-sfva625-1-i proj
-#create_project -force proj
+#create_project -force -part xczu3eg-sfva625-1-i proj
+create_project -force proj
 #set_property board_part xilinx.com:zcu104:part0:1.1 [current_project]
+set_property board_part em.avnet.com:ultrazed_eg_iocc_production:part0:1.0 [current_project]
 set_property target_language verilog [current_project]
 set_property default_lib work [current_project]
 load_features ipintegrator

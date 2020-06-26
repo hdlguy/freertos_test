@@ -3,7 +3,9 @@
 
 int main()
 {
-    xil_printf("Hello World!\n\r");
-    xil_printf("Successfully ran Hello World application");
+    xil_printf("Test2 says: Hello World!\n\r");
+
+    xil_printf("Successfully ran Hello World application\n\r");
+
     return 0;
 }
