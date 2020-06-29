@@ -1,25 +1,30 @@
 # run at linux command line "xsct setup.tcl"
-set sdk_dir ./dma_test.sdk
+file delete -force ./workspace
 
-file delete -force $sdk_dir
-
-set plat   ../../../fpga/implement/results/top.xsa
+set hw   ../../../fpga/implement/results/top.xsa
 #set proc "ps7_cortexa9_0"
 #set proc "psu_cortexr5_0"
 set proc "psu_cortexa53_0"
-set os "standalone"
 
-setws $sdk_dir
+setws ./workspace
 
-platform create -name "streamer" -hw $plat -proc $proc -os $os
+#platform create -name "streamer" -hw $hw -proc $proc -os standalone
+#domain create -name "streamer_domain" -os standalone -proc $proc
+#app create    -name test2 -platform streamer -domain streamer_domain -template "Empty Application"
+#file link -symbolic ./workspace/test2/src/main.c ../../../src/test2/main.c
+#app build test2
 
-platform generate
+platform create -name "rtos_plat"    -hw $hw -proc $proc -os freertos10_xilinx
+domain create   -name "rtos_domain"          -proc $proc -os freertos10_xilinx 
+app create    -name rtos_test1 -platform rtos_plat -domain rtos_domain -template "Empty Application"
+file link -symbolic ./workspace/rtos_test1/src/freertos_hello_world.c ../../../src/rtos_test1/freertos_hello_world.c
 
-domain create -name "streamer_domain" -os $os -proc $proc
 
-app create -name test2 -platform streamer -domain streamer_domain -template "Empty Application"
 
-file link -symbolic $sdk_dir/test2/src/main.c ../../../src/main.c                                                                                                                                            
 
-app build test2
+
+#app create    -name test3 -platform streamer -domain streamer_domain -template "Hello World"
+
+
+
 
