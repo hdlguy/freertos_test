@@ -38,14 +38,18 @@ static TaskHandle_t xTxTask;
 static TaskHandle_t xRxTask;
 static QueueHandle_t xQueue = NULL;
 static TimerHandle_t xTimer = NULL;
-char HWstring[15] = "Hello World";
+char HWstring[15] = "Hello!";
 long RxtaskCntr = 0;
 
 int main( void )
 {
 	const TickType_t x10seconds = pdMS_TO_TICKS( DELAY_10_SECONDS );
 
-	xil_printf( "Hello from Freertos example main!\r\n" );
+	xil_printf( "Hello from Freertos example main\r\n" );
+
+	// let's set the LED's
+	uint32_t* led_ptr = XPAR_AXI_GPIO_0_BASEADDR;
+	*led_ptr = 0xaa;
 
 	/* Create the two tasks.  The Tx task is given a lower priority than the
 	Rx task, so the Rx task will leave the Blocked state and pre-empt the Tx
@@ -137,6 +141,8 @@ char Recdstring[15] = "";
 
 		/* Print the received data. */
 		xil_printf( "Rx task received string from Tx task: %s\r\n", Recdstring );
+		uint32_t* led_ptr = XPAR_AXI_GPIO_0_BASEADDR;
+		(*led_ptr)++;
 		RxtaskCntr++;
 	}
 }
