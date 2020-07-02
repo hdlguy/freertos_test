@@ -1,33 +1,3 @@
-/******************************************************************************
-* Copyright (C) 2010 - 2020 Xilinx, Inc.  All rights reserved.
-* SPDX-License-Identifier: MIT
-******************************************************************************/
-
-/******************************************************************************/
-/**
-*
-* @file xscugic_example.c
-*
-* This file contains a design example using the Interrupt Controller driver
-* (XScuGic) and hardware device. Please reference other device driver examples
-* to see more examples of how the intc and interrupts can be used by a software
-* application.
-*
-* @note
-*
-* None
-*
-* <pre>
-*
-* MODIFICATION HISTORY:
-* Ver   Who  Date     Changes
-* ----- ---- -------- ----------------------------------------------------
-* 1.00a drg  01/18/10 First release
-* </pre>
-******************************************************************************/
-
-/***************************** Include Files *********************************/
-
 #include <stdio.h>
 #include <stdlib.h>
 #include "xil_io.h"
@@ -38,35 +8,16 @@
 #include "xil_types.h"
 #include "xscugic.h"
 
-/************************** Constant Definitions *****************************/
-
-/*
- * The following constants map to the XPAR parameters created in the
- * xparameters.h file. They are defined here such that a user can easily
- * change all the needed parameters in one place.
- */
 #define INTC_DEVICE_ID		XPAR_SCUGIC_0_DEVICE_ID
 #define INTC_DEVICE_INT_ID	0x0E
 
-/**************************** Type Definitions *******************************/
-
-/***************** Macros (Inline Functions) Definitions *********************/
-
-/************************** Function Prototypes ******************************/
 int ScuGicExample(u16 DeviceId);
 int SetUpInterruptSystem(XScuGic *XScuGicInstancePtr);
 void DeviceDriverHandler(void *CallbackRef);
 
-/************************** Variable Definitions *****************************/
-
 XScuGic InterruptController; 	     /* Instance of the Interrupt Controller */
-static XScuGic_Config *GicConfig;    /* The configuration parameters of the
-                                       controller */
+static XScuGic_Config *GicConfig;    /* The configuration parameters of the controller */
 
-/*
- * Create a shared variable to be used by the main thread of processing and
- * the interrupt processing
- */
 volatile static int InterruptProcessed = FALSE;
 
 static void AssertPrint(const char8 *FilenamePtr, s32 LineNumber){
@@ -74,33 +25,20 @@ static void AssertPrint(const char8 *FilenamePtr, s32 LineNumber){
 	xil_printf("Line Number: %d\r\n",LineNumber);
 }
 
-/*****************************************************************************/
-/**
-*
-* This is the main function for the Interrupt Controller example.
-*
-* @param	None.
-*
-* @return	XST_SUCCESS to indicate success, otherwise XST_FAILURE.
-*
-* @note		None.
-*
-****************************************************************************/
+
 int main(void)
 {
 	int Status;
 
+	uint32_t* led_ptr = XPAR_LED_GPIO_BASEADDR;
+	(*led_ptr) = 0x00;
 
-	/*
-	 * Setup an assert call back to get some info if we assert.
-	 */
+	// Setup an assert call back to get some info if we assert.
 	Xil_AssertSetCallback(AssertPrint);
 
 	xil_printf("GIC Example Test\r\n");
 
-	/*
-	 *  Run the Gic example , specify the Device ID generated in xparameters.h
-	 */
+	// Run the Gic example , specify the Device ID generated in xparameters.h
 	Status = ScuGicExample(INTC_DEVICE_ID);
 	if (Status != XST_SUCCESS) {
 		xil_printf("GIC Example Test Failed\r\n");
@@ -137,79 +75,50 @@ int ScuGicExample(u16 DeviceId)
 {
 	int Status;
 
-	/*
-	 * Initialize the interrupt controller driver so that it is ready to
-	 * use.
-	 */
 	GicConfig = XScuGic_LookupConfig(DeviceId);
 	if (NULL == GicConfig) {
 		return XST_FAILURE;
 	}
 
-	Status = XScuGic_CfgInitialize(&InterruptController, GicConfig,
-					GicConfig->CpuBaseAddress);
+	Status = XScuGic_CfgInitialize(&InterruptController, GicConfig, GicConfig->CpuBaseAddress);
 	if (Status != XST_SUCCESS) {
 		return XST_FAILURE;
 	}
 
 
-	/*
-	 * Perform a self-test to ensure that the hardware was built
-	 * correctly
-	 */
 	Status = XScuGic_SelfTest(&InterruptController);
 	if (Status != XST_SUCCESS) {
 		return XST_FAILURE;
 	}
 
 
-	/*
-	 * Setup the Interrupt System
-	 */
 	Status = SetUpInterruptSystem(&InterruptController);
 	if (Status != XST_SUCCESS) {
 		return XST_FAILURE;
 	}
 
-	/*
-	 * Connect a device driver handler that will be called when an
-	 * interrupt for the device occurs, the device driver handler performs
-	 * the specific interrupt processing for the device
-	 */
 	Status = XScuGic_Connect(&InterruptController, INTC_DEVICE_INT_ID,
 			   (Xil_ExceptionHandler)DeviceDriverHandler,
 			   (void *)&InterruptController);
-
 	if (Status != XST_SUCCESS) {
 		return XST_FAILURE;
 	}
 
-	/*
-	 * Enable the interrupt for the device and then cause (simulate) an
-	 * interrupt so the handlers will be called
-	 */
+	// Enable the interrupt for the device and then cause (simulate) an
+	// interrupt so the handlers will be called
 	XScuGic_Enable(&InterruptController, INTC_DEVICE_INT_ID);
 
-	/*
-	 *  Simulate the Interrupt
-	 */
-	Status = XScuGic_SoftwareIntr(&InterruptController,
-					INTC_DEVICE_INT_ID,
-					XSCUGIC_SPI_CPU0_MASK);
+	// Simulate the Interrupt
+	Status = XScuGic_SoftwareIntr(&InterruptController,	INTC_DEVICE_INT_ID, XSCUGIC_SPI_CPU0_MASK);
 	if (Status != XST_SUCCESS) {
 		return XST_FAILURE;
 	}
 
-	/*
-	 * Wait for the interrupt to be processed, if the interrupt does not
-	 * occur this loop will wait forever
-	 */
+	// Wait for the interrupt to be processed, if the interrupt does not occur this loop will wait forever
 	while (1) {
-		/*
-		 * If the interrupt occurred which is indicated by the global
-		 * variable which is set in the device driver handler, then
-		 * stop waiting
-		 */
+		 //* If the interrupt occurred which is indicated by the global
+		 //* variable which is set in the device driver handler, then
+		 //* stop waiting
 		if (InterruptProcessed) {
 			break;
 		}
@@ -237,17 +146,13 @@ int ScuGicExample(u16 DeviceId)
 int SetUpInterruptSystem(XScuGic *XScuGicInstancePtr)
 {
 
-	/*
-	 * Connect the interrupt controller interrupt handler to the hardware
-	 * interrupt handling logic in the ARM processor.
-	 */
-	Xil_ExceptionRegisterHandler(XIL_EXCEPTION_ID_INT,
+	//* Connect the interrupt controller interrupt handler to the hardware
+	//* interrupt handling logic in the ARM processor.
+	Xil_ExceptionRegisterHandler(XIL_EXCEPTION_ID_INT, 
 			(Xil_ExceptionHandler) XScuGic_InterruptHandler,
 			XScuGicInstancePtr);
 
-	/*
-	 * Enable interrupts in the ARM
-	 */
+	//* Enable interrupts in the ARM
 	Xil_ExceptionEnable();
 
 	return XST_SUCCESS;
@@ -283,4 +188,7 @@ void DeviceDriverHandler(void *CallbackRef)
 	 * Indicate the interrupt has been processed using a shared variable
 	 */
 	InterruptProcessed = TRUE;
+	
+	uint32_t* led_ptr = XPAR_LED_GPIO_BASEADDR;
+	(*led_ptr)++;
 }

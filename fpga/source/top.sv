@@ -22,7 +22,7 @@ module top (
     inout   logic           FIXED_IO_ps_porb,
     inout   logic           FIXED_IO_ps_srstb,
     //
-    output  logic [7:0]     led_tri_o
+    output  logic [7:0]     leds_8bits_tri_o
 );
 
     logic uart_rtl_rxd, uart_rtl_txd;
@@ -49,7 +49,7 @@ module top (
         .FIXED_IO_ps_clk(FIXED_IO_ps_clk),
         .FIXED_IO_ps_porb(FIXED_IO_ps_porb),
         .FIXED_IO_ps_srstb(FIXED_IO_ps_srstb),
-        .led_tri_o(led_tri_o),        
+        .leds_8bits_tri_o(leds_8bits_tri_o),
         .uart_rtl_rxd(uart_rtl_rxd),
         .uart_rtl_txd(uart_rtl_txd)
     );
