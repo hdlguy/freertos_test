@@ -1,16 +1,3 @@
-/*
-    Copyright (C) 2017 Amazon.com, Inc. or its affiliates.  All Rights Reserved.
-    Copyright (c) 2012 - 2020 Xilinx, Inc. All Rights Reserved.
-	SPDX-License-Identifier: MIT
-
-
-    http://www.FreeRTOS.org
-    http://aws.amazon.com/freertos
-
-
-    1 tab == 4 spaces!
-*/
-
 /* FreeRTOS includes. */
 #include "FreeRTOS.h"
 #include "task.h"
@@ -21,21 +8,19 @@
 #include "xparameters.h"
 
 #define TIMER_ID	1
+#define DELAY_15_SECONDS	15000UL
 #define DELAY_10_SECONDS	10000UL
 #define DELAY_1_SECOND		1000UL
 #define TIMER_CHECK_THRESHOLD	9
-/*-----------------------------------------------------------*/
 
 /* The Tx and Rx tasks as described at the top of this file. */
 static void prvTxTask( void *pvParameters );
 static void prvRxTask( void *pvParameters );
 static void vTimerCallback( TimerHandle_t pxTimer );
-/*-----------------------------------------------------------*/
 
-/* The queue used by the Tx and Rx tasks, as described at the top of this
-file. */
-static TaskHandle_t xTxTask;
-static TaskHandle_t xRxTask;
+/* The queue used by the Tx and Rx tasks, as described at the top of this file. */
+static TaskHandle_t  xTxTask;
+static TaskHandle_t  xRxTask;
 static QueueHandle_t xQueue = NULL;
 static TimerHandle_t xTimer = NULL;
 char HWstring[15] = "Hello!";
@@ -43,13 +28,13 @@ long RxtaskCntr = 0;
 
 int main( void )
 {
-	const TickType_t x10seconds = pdMS_TO_TICKS( DELAY_10_SECONDS );
+	const TickType_t x10seconds = pdMS_TO_TICKS( DELAY_15_SECONDS );
 
 	xil_printf( "Hello from Freertos example main\r\n" );
 
 	// let's set the LED's
-	uint32_t* led_ptr = XPAR_AXI_GPIO_0_BASEADDR;
-	*led_ptr = 0xaa;
+	uint32_t* led_ptr = XPAR_LED_GPIO_BASEADDR;
+	*led_ptr = 0xff;
 
 	/* Create the two tasks.  The Tx task is given a lower priority than the
 	Rx task, so the Rx task will leave the Blocked state and pre-empt the Tx
@@ -109,7 +94,8 @@ int main( void )
 }
 
 
-/*-----------------------------------------------------------*/
+
+
 static void prvTxTask( void *pvParameters )
 {
 const TickType_t x1second = pdMS_TO_TICKS( DELAY_1_SECOND );
@@ -127,7 +113,8 @@ const TickType_t x1second = pdMS_TO_TICKS( DELAY_1_SECOND );
 	}
 }
 
-/*-----------------------------------------------------------*/
+
+
 static void prvRxTask( void *pvParameters )
 {
 char Recdstring[15] = "";
@@ -141,13 +128,14 @@ char Recdstring[15] = "";
 
 		/* Print the received data. */
 		xil_printf( "Rx task received string from Tx task: %s\r\n", Recdstring );
-		uint32_t* led_ptr = XPAR_AXI_GPIO_0_BASEADDR;
+		uint32_t* led_ptr = XPAR_LED_GPIO_BASEADDR;
 		(*led_ptr)++;
 		RxtaskCntr++;
 	}
 }
 
-/*-----------------------------------------------------------*/
+
+
 static void vTimerCallback( TimerHandle_t pxTimer )
 {
 	long lTimerId;

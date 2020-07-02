@@ -25,6 +25,8 @@ module top (
     output  logic [7:0]     led_tri_o
 );
 
+    logic uart_rtl_rxd, uart_rtl_txd;
+
     system system_i (
         .DDR_addr(DDR_addr),
         .DDR_ba(DDR_ba),
@@ -47,7 +49,11 @@ module top (
         .FIXED_IO_ps_clk(FIXED_IO_ps_clk),
         .FIXED_IO_ps_porb(FIXED_IO_ps_porb),
         .FIXED_IO_ps_srstb(FIXED_IO_ps_srstb),
-        .led_tri_o(led_tri_o)
+        .led_tri_o(led_tri_o),        
+        .uart_rtl_rxd(uart_rtl_rxd),
+        .uart_rtl_txd(uart_rtl_txd)
     );
+    
+    assign uart_rtl_rxd = uart_rtl_txd;
 
 endmodule
