@@ -128,6 +128,7 @@ int main(void)
 	 * xparameters.h
 	 */
 	*((uint32_t*)XPAR_AXI_GPIO_0_BASEADDR) = 0x00;
+	*((uint32_t*)XPAR_AXI_GPIO_1_BASEADDR) = 0x0000;
 	Status = IntcExample(INTC_DEVICE_ID);
 	if (Status != XST_SUCCESS) {
 		xil_printf("Intc Example Failed\r\n");
@@ -327,5 +328,6 @@ void DeviceDriverHandler(void *CallbackRef)
 	 */
 	InterruptProcessed = TRUE;
 	*((uint32_t*)XPAR_AXI_GPIO_0_BASEADDR) = 0xff;
+	*((uint32_t*)XPAR_AXI_GPIO_1_BASEADDR) = 0xffff;
 
 }
