@@ -70,14 +70,12 @@ int SetUpInterruptSystem(XIntc *XIntcInstancePtr)
 	Xil_ExceptionEnable();
 
 	return XST_SUCCESS;
-
 }
 
 
 void DeviceDriverHandler(void *CallbackRef)
 {
 	InterruptProcessed = TRUE;
-
 	led_vec++;
 	*((uint32_t*)XPAR_AXI_GPIO_0_BASEADDR) = 0x00ff & (led_vec >> 0);
 	*((uint32_t*)XPAR_AXI_GPIO_1_BASEADDR) = 0xffff & (led_vec >> 8);
