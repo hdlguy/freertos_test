@@ -33,8 +33,7 @@ int main( void )
 	xil_printf( "Hello from Freertos example main\r\n" );
 
 	// let's set the LED's
-	uint32_t* led_ptr = XPAR_LED_GPIO_BASEADDR;
-	*led_ptr = 0xff;
+	*((uint32_t*)XPAR_AXI_GPIO_0_BASEADDR) = 0xff;
 
 	/* Create the two tasks.  The Tx task is given a lower priority than the
 	Rx task, so the Rx task will leave the Blocked state and pre-empt the Tx
@@ -128,8 +127,7 @@ char Recdstring[15] = "";
 
 		/* Print the received data. */
 		xil_printf( "Rx task received string from Tx task: %s\r\n", Recdstring );
-		uint32_t* led_ptr = XPAR_LED_GPIO_BASEADDR;
-		(*led_ptr)++;
+		(*((uint32_t*)XPAR_AXI_GPIO_0_BASEADDR))++;
 		RxtaskCntr++;
 	}
 }
