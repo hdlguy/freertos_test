@@ -18,7 +18,7 @@ platform create -name "rtos_plat"    -hw $hw -proc $proc -os freertos10_xilinx
 domain create   -name "rtos_domain"          -proc $proc -os freertos10_xilinx 
 
 app create    -name rtos_test1 -platform rtos_plat -domain rtos_domain -template "Empty Application"
-file link -symbolic ./workspace/rtos_test1/src/freertos_hello_world.c ../../../src/rtos_test1/freertos_hello_world.c
+file link -symbolic ./workspace/rtos_test1/src/freertos_hello_world.c ../../../src/freertos_hello_world.c
 
 
 
