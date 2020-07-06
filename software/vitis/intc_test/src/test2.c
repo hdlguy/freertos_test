@@ -5,7 +5,7 @@
 #include "xil_printf.h"
 
 #define INTC_DEVICE_ID		  XPAR_INTC_0_DEVICE_ID  // i think this is the ID of the INTC core.
-#define INTC_DEVICE_INT_ID	  XPAR_AXI_INTC_0_FIT_TIMER_0_INTERRUPT_INTR // i think this is the ID of the device wired into the INTC core.
+#define INTC_DEVICE_INT_ID	  XPAR_AXI_INTC_0_SYSTEM_PPS_INTR // i think this is the ID of the device wired into the INTC core.
 
 int IntcExample(u16 DeviceId);
 int SetUpInterruptSystem(XIntc *XIntcInstancePtr);
