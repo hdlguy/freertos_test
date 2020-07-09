@@ -33,7 +33,7 @@ int main(void)
 		}
 	}
 
-	xil_printf("Successfully ran Intc Example\r\n");
+	xil_printf("Success: InterruptProcessed = TRUE\r\n");
 	return XST_SUCCESS;
 }
 
@@ -42,13 +42,13 @@ int SetUpInterruptSystem(XIntc *XIntcInstancePtr, u16 DeviceId, u8 pps_device_id
 {
 	int Status;
 
-	Status = XIntc_Initialize(&InterruptController, DeviceId);
+	Status = XIntc_Initialize(XIntcInstancePtr, DeviceId);
 	if (Status != XST_SUCCESS) return XST_FAILURE;
 
 	Status = XIntc_Connect(XIntcInstancePtr, pps_device_id, (XInterruptHandler)DeviceDriverHandler, (void *)0);
 	if (Status != XST_SUCCESS) return XST_FAILURE;
 
-	Status = XIntc_Start(XIntcInstancePtr, XIN_REAL_MODE); // XIN_SIMULATION_MODE);
+	Status = XIntc_Start(XIntcInstancePtr, XIN_REAL_MODE);
 	if (Status != XST_SUCCESS) return XST_FAILURE;
 
 	XIntc_Enable(XIntcInstancePtr, pps_device_id);

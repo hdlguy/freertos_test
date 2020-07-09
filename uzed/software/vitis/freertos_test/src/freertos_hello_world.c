@@ -31,6 +31,7 @@ long RxtaskCntr = 0;
 int SetUpInterruptSystem(XIntc *XIntcInstancePtr, u16 DeviceId, u8 pps_device_id);
 void DeviceDriverHandler(void *CallbackRef);
 
+//extern XScuGic xInterruptController
 static XIntc InterruptController; 
 volatile static int InterruptProcessed = FALSE;
 
@@ -56,10 +57,10 @@ int main( void )
 
 
 
-//	u16 DeviceId 		= XPAR_INTC_0_DEVICE_ID; 			// i think this is the ID of the INTC core.
-//	u8  pps_device_id 	= XPAR_AXI_INTC_0_SYSTEM_PPS_INTR;	// i think this is the ID of the device wired into the INTC core.
-//	int Status = SetUpInterruptSystem(&InterruptController, DeviceId, pps_device_id);
-//	if (Status != XST_SUCCESS) xil_printf("SetUpInterruptSystem: FAILURE\n\r");
+	u16 DeviceId 		= XPAR_INTC_0_DEVICE_ID; 			// i think this is the ID of the INTC core.
+	u8  pps_device_id 	= XPAR_AXI_INTC_0_SYSTEM_PPS_INTR;	// i think this is the ID of the device wired into the INTC core.
+	int Status = SetUpInterruptSystem(&InterruptController, DeviceId, pps_device_id);
+	if (Status != XST_SUCCESS) xil_printf("SetUpInterruptSystem: FAILURE\n\r");
 
 
 	vTaskStartScheduler(); // Start the tasks and timer running.
