@@ -9,10 +9,6 @@ set proc "psu_cortexa53_0"
 setws ./workspace
 
 platform create -name "standalone_plat"    -hw $hw -proc $proc -os standalone
-#domain create   -name "standalone_domain"          -proc $proc -os standalone 
-
-#app create -name xintc_example -platform standalone_plat -domain standalone_domain -template "Empty Application"
-#file link -symbolic ./workspace/xintc_example/src/xintc_example.c ../../../src/xintc_example.c
 
 app create -name test2 -platform standalone_plat -domain standalone_domain -template "Empty Application"
 file link -symbolic ./workspace/test2/src/test2.c ../../../src/test2.c

@@ -9,8 +9,8 @@
 #include "xscugic.h"
 
 #define INTC_DEVICE_ID		XPAR_SCUGIC_0_DEVICE_ID
-#define INTC_DEVICE_INT_ID	0x0E
-//#define INTC_DEVICE_INT_ID  XPAR_FABRIC_PULSE_INTR
+//#define INTC_DEVICE_INT_ID	0x0E
+#define INTC_DEVICE_INT_ID  XPAR_FABRIC_PULSE1_INTR
 
 int ScuGicExample(u16 DeviceId);
 int SetUpInterruptSystem(XScuGic *XScuGicInstancePtr);
@@ -107,16 +107,24 @@ int ScuGicExample(u16 DeviceId)
 	// Enable the interrupt for the device and then cause (simulate) an interrupt so the handlers will be called
 	XScuGic_Enable(&InterruptController, INTC_DEVICE_INT_ID);
 
-	// Simulate the Interrupt
-	Status = XScuGic_SoftwareIntr(&InterruptController,	INTC_DEVICE_INT_ID, XSCUGIC_SPI_CPU0_MASK);
-	if (Status != XST_SUCCESS) {
-		return XST_FAILURE;
-	}
+//	// Simulate the Interrupt
+//	Status = XScuGic_SoftwareIntr(&InterruptController,	INTC_DEVICE_INT_ID, XSCUGIC_SPI_CPU0_MASK);
+//	if (Status != XST_SUCCESS) {
+//		return XST_FAILURE;
+//	}
 
+	uint32_t loopcount = 0;
 	while (1) {
 		if (InterruptProcessed) {
 			break;
 		}
+		if (0==(loopcount%10000000)) {
+			xil_printf("InterruptController.UnhandledInterrupts = %d\r\n", InterruptController.UnhandledInterrupts);
+			xil_printf("InterruptController.IsReady = 0x%x\r\n", InterruptController.IsReady);
+			xil_printf("InterruptController.Config->HandlerTable[121] = 0x%x\r\n", InterruptController.Config->HandlerTable[121]);
+			xil_printf("DeviceDriverHandler = %p\r\n", DeviceDriverHandler);
+		}
+		loopcount++;
 	}
 
 	return XST_SUCCESS;
