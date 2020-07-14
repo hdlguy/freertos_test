@@ -200,5 +200,5 @@ void DeviceDriverHandler(void *CallbackRef)
 	 */
 	InterruptProcessed = TRUE;
 
-	(*((uint32_t*)XPAR_AXI_GPIO_0_BASEADDR)) -= 7;
+	(*((uint32_t*)XPAR_AXI_GPIO_0_BASEADDR)) -= 1;
 }
