@@ -199,11 +199,16 @@ proc create_root_design { parentCell } {
 
   # Create ports
   set axi_aclk [ create_bd_port -dir O -type clk axi_aclk ]
-  set pulse [ create_bd_port -dir I -from 3 -to 0 -type intr pulse ]
+  set pl_ps_irq0 [ create_bd_port -dir I -from 7 -to 0 -type intr pl_ps_irq0 ]
   set_property -dict [ list \
-   CONFIG.PortWidth {4} \
+   CONFIG.PortWidth {8} \
    CONFIG.SENSITIVITY {LEVEL_HIGH:LEVEL_HIGH:LEVEL_HIGH:LEVEL_HIGH} \
- ] $pulse
+ ] $pl_ps_irq0
+  set pl_ps_irq1 [ create_bd_port -dir I -from 7 -to 0 -type intr pl_ps_irq1 ]
+  set_property -dict [ list \
+   CONFIG.PortWidth {8} \
+   CONFIG.SENSITIVITY {LEVEL_HIGH:LEVEL_HIGH:LEVEL_HIGH:LEVEL_HIGH} \
+ ] $pl_ps_irq1
 
   # Create instance: axi_gpio_0, and set properties
   set axi_gpio_0 [ create_bd_cell -type ip -vlnv xilinx.com:ip:axi_gpio:2.0 axi_gpio_0 ]
@@ -225,15 +230,17 @@ proc create_root_design { parentCell } {
   set ila_0 [ create_bd_cell -type ip -vlnv xilinx.com:ip:ila:6.2 ila_0 ]
   set_property -dict [ list \
    CONFIG.ALL_PROBE_SAME_MU_CNT {2} \
-   CONFIG.C_ADV_TRIGGER {true} \
-   CONFIG.C_DATA_DEPTH {4096} \
    CONFIG.C_ENABLE_ILA_AXI_MON {false} \
-   CONFIG.C_EN_STRG_QUAL {1} \
+   CONFIG.C_EN_STRG_QUAL {0} \
    CONFIG.C_INPUT_PIPE_STAGES {2} \
    CONFIG.C_MONITOR_TYPE {Native} \
-   CONFIG.C_NUM_OF_PROBES {1} \
+   CONFIG.C_NUM_OF_PROBES {2} \
    CONFIG.C_PROBE0_MU_CNT {2} \
-   CONFIG.C_PROBE0_WIDTH {4} \
+   CONFIG.C_PROBE0_TYPE {0} \
+   CONFIG.C_PROBE0_WIDTH {8} \
+   CONFIG.C_PROBE1_MU_CNT {2} \
+   CONFIG.C_PROBE1_TYPE {0} \
+   CONFIG.C_PROBE1_WIDTH {8} \
  ] $ila_0
 
   # Create instance: ps7_0_axi_periph, and set properties
@@ -254,6 +261,12 @@ proc create_root_design { parentCell } {
   set_property -dict [ list \
    CONFIG.NUM_PORTS {1} \
  ] $xlconcat_0
+
+  # Create instance: xlconcat_1, and set properties
+  set xlconcat_1 [ create_bd_cell -type ip -vlnv xilinx.com:ip:xlconcat:2.1 xlconcat_1 ]
+  set_property -dict [ list \
+   CONFIG.NUM_PORTS {1} \
+ ] $xlconcat_1
 
   # Create instance: zynq_ultra_ps_e_0, and set properties
   set zynq_ultra_ps_e_0 [ create_bd_cell -type ip -vlnv xilinx.com:ip:zynq_ultra_ps_e:3.3 zynq_ultra_ps_e_0 ]
@@ -937,10 +950,12 @@ proc create_root_design { parentCell } {
   connect_bd_intf_net -intf_net ps7_0_axi_periph_M01_AXI [get_bd_intf_pins axi_gpio_1/S_AXI] [get_bd_intf_pins ps7_0_axi_periph/M01_AXI]
 
   # Create port connections
-  connect_bd_net -net pl_ps_irq0_0_1 [get_bd_ports pulse] [get_bd_pins xlconcat_0/In0]
+  connect_bd_net -net pl_ps_irq0_1 [get_bd_ports pl_ps_irq0] [get_bd_pins xlconcat_1/In0]
+  connect_bd_net -net pl_ps_irq1_1 [get_bd_ports pl_ps_irq1] [get_bd_pins xlconcat_0/In0]
   connect_bd_net -net processing_system7_0_FCLK_CLK0 [get_bd_ports axi_aclk] [get_bd_pins axi_gpio_0/s_axi_aclk] [get_bd_pins axi_gpio_1/s_axi_aclk] [get_bd_pins ila_0/clk] [get_bd_pins ps7_0_axi_periph/ACLK] [get_bd_pins ps7_0_axi_periph/M00_ACLK] [get_bd_pins ps7_0_axi_periph/M01_ACLK] [get_bd_pins ps7_0_axi_periph/S00_ACLK] [get_bd_pins rst_ps7_0_100M/slowest_sync_clk] [get_bd_pins zynq_ultra_ps_e_0/maxihpm0_lpd_aclk] [get_bd_pins zynq_ultra_ps_e_0/pl_clk0]
   connect_bd_net -net rst_ps7_0_100M_peripheral_aresetn [get_bd_pins axi_gpio_0/s_axi_aresetn] [get_bd_pins axi_gpio_1/s_axi_aresetn] [get_bd_pins ps7_0_axi_periph/ARESETN] [get_bd_pins ps7_0_axi_periph/M00_ARESETN] [get_bd_pins ps7_0_axi_periph/M01_ARESETN] [get_bd_pins ps7_0_axi_periph/S00_ARESETN] [get_bd_pins rst_ps7_0_100M/peripheral_aresetn]
-  connect_bd_net -net xlconcat_0_dout [get_bd_pins ila_0/probe0] [get_bd_pins xlconcat_0/dout] [get_bd_pins zynq_ultra_ps_e_0/pl_ps_irq0] [get_bd_pins zynq_ultra_ps_e_0/pl_ps_irq1]
+  connect_bd_net -net xlconcat_0_dout [get_bd_pins ila_0/probe1] [get_bd_pins xlconcat_0/dout] [get_bd_pins zynq_ultra_ps_e_0/pl_ps_irq1]
+  connect_bd_net -net xlconcat_1_dout [get_bd_pins ila_0/probe0] [get_bd_pins xlconcat_1/dout] [get_bd_pins zynq_ultra_ps_e_0/pl_ps_irq0]
   connect_bd_net -net zynq_ultra_ps_e_0_pl_resetn0 [get_bd_pins rst_ps7_0_100M/ext_reset_in] [get_bd_pins zynq_ultra_ps_e_0/pl_resetn0]
 
   # Create address segments

@@ -10,7 +10,7 @@
 
 #define INTC_DEVICE_ID		XPAR_SCUGIC_0_DEVICE_ID
 // pl interrupt ID[15:0] = 91:84, 68:64, 63:61
-#define INTC_DEVICE_INT_ID	68 //68 // 0x0E
+#define INTC_DEVICE_INT_ID	84 // 0x0E
 
 int ScuGicExample(u16 DeviceId);
 int SetUpInterruptSystem(XScuGic *XScuGicInstancePtr);
@@ -32,6 +32,7 @@ int main(void)
 	int Status;
 
 	*((uint32_t *)XPAR_AXI_GPIO_0_BASEADDR) = 0xff;
+	*((uint32_t *)XPAR_AXI_GPIO_1_BASEADDR) = 0xffff;
 
 	// Setup an assert call back to get some info if we assert.
 	Xil_AssertSetCallback(AssertPrint);

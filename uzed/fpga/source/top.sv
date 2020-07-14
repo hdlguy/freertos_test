@@ -4,17 +4,17 @@ module top (
     output  logic [7:0]     leds_8bits_tri_o
 );
 
-    logic[3:0] pulse;
+    logic axi_aclk;
+    logic[31:0] axi_count;
+    
+    always_ff @(posedge axi_aclk) axi_count <= axi_count + 1;
+
     system system_i (
         .leds_8bits_tri_o   (leds_8bits_tri_o),        
         .pmod_tri_o         (pmod_tri_o),
         .axi_aclk           (axi_aclk),
-        .pulse              (pulse)
-    );
-    
-    intr_pulse_gen #(.max_count(   100000)) pulse_gen3 (.clk(axi_aclk), .pulse(pulse[3]));
-    intr_pulse_gen #(.max_count(  1000000)) pulse_gen2 (.clk(axi_aclk), .pulse(pulse[2]));
-    intr_pulse_gen #(.max_count( 10000000)) pulse_gen1 (.clk(axi_aclk), .pulse(pulse[1]));
-    intr_pulse_gen #(.max_count(100000000)) pulse_gen0 (.clk(axi_aclk), .pulse(pulse[0]));
+        .pl_ps_irq1         (axi_count[31:24]),
+        .pl_ps_irq0         (axi_count[23:16])
+    );    
     
 endmodule

@@ -9,8 +9,7 @@
 #include "xscugic.h"
 
 #define INTC_DEVICE_ID		XPAR_SCUGIC_0_DEVICE_ID
-//#define INTC_DEVICE_INT_ID	0x0E
-#define INTC_DEVICE_INT_ID  XPAR_FABRIC_PULSE1_INTR
+#define INTC_DEVICE_INT_ID	XPAR_FABRIC_PL_PS_IRQ07_INTR // 0x0E
 
 int ScuGicExample(u16 DeviceId);
 int SetUpInterruptSystem(XScuGic *XScuGicInstancePtr);
@@ -103,6 +102,15 @@ int ScuGicExample(u16 DeviceId)
 	if (Status != XST_SUCCESS) {
 		return XST_FAILURE;
 	}
+
+	u8 iPriority, iTrigger;
+	XScuGic_GetPriorityTriggerType(&InterruptController,INTC_DEVICE_INT_ID,&iPriority,&iTrigger);
+	xil_printf("iPriority = 0x%x, iTrigger = 0x%x\r\n", iPriority, iTrigger);
+	iTrigger = 0x03;
+	XScuGic_SetPriorityTriggerType(&InterruptController,INTC_DEVICE_INT_ID, iPriority, iTrigger);
+	XScuGic_GetPriorityTriggerType(&InterruptController,INTC_DEVICE_INT_ID,&iPriority,&iTrigger);
+	xil_printf("iPriority = 0x%x, iTrigger = 0x%x\r\n", iPriority, iTrigger);
+
 
 	// Enable the interrupt for the device and then cause (simulate) an interrupt so the handlers will be called
 	XScuGic_Enable(&InterruptController, INTC_DEVICE_INT_ID);
