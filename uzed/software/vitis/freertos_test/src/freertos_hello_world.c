@@ -6,6 +6,7 @@
 /* Xilinx includes. */
 #include "xil_printf.h"
 #include "xparameters.h"
+#include "xscugic.h"
 
 #define TIMER_ID	1
 #define DELAY_10_SECONDS	10000UL
@@ -23,12 +24,25 @@ static TimerHandle_t xTimer = NULL;
 char HWstring[15] = "Hello World";
 long RxtaskCntr = 0;
 
+#define INTC_DEVICE_ID		XPAR_SCUGIC_0_DEVICE_ID
+#define INTC_DEVICE_INT_ID	XPAR_FABRIC_PL_PS_IRQ07_INTR // 0x0E
+
+volatile static int InterruptProcessed = FALSE;
+
+extern XScuGic xInterruptController;  /* Instance of the Interrupt Controller */
+static XScuGic_Config *GicConfig;    /* The configuration parameters of the controller */
+void DeviceDriverHandler(void *CallbackRef);
+int HwIntSetup(XScuGic *InterruptController, u16 DeviceId);
+
+
 int main( void )
 {
 	const TickType_t x10seconds = pdMS_TO_TICKS( DELAY_10_SECONDS );
 
 	xil_printf( "Hello from Freertos example main\r\n" );
 
+	(*((uint32_t*)XPAR_AXI_GPIO_0_BASEADDR)) = 0xff;
+	(*((uint32_t*)XPAR_AXI_GPIO_1_BASEADDR)) = 0xffff;
 
 	xTaskCreate(prvTxTask, ( const char * ) "Tx", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY, &xTxTask);
 
@@ -41,6 +55,9 @@ int main( void )
 	configASSERT( xTimer );
 
 	xTimerStart( xTimer, 0 );
+
+	int IntStatus = HwIntSetup(&xInterruptController, INTC_DEVICE_ID);
+	xil_printf("IntStatus = 0x%x\r\n", IntStatus);
 
 	vTaskStartScheduler();
 
@@ -65,6 +82,7 @@ static void prvRxTask( void *pvParameters )
 	for( ;; ) {
 		xQueueReceive( xQueue,	Recdstring,	portMAX_DELAY );
 		xil_printf( "Rx task received string from Tx task: %s\r\n", Recdstring );
+	    (*((uint32_t*)XPAR_AXI_GPIO_1_BASEADDR)) -= 1;  // flash the PMOD LEDs
 		RxtaskCntr++;
 	}
 }
@@ -88,5 +106,57 @@ static void vTimerCallback( TimerHandle_t pxTimer )
 
 	vTaskDelete( xRxTask );
 	vTaskDelete( xTxTask );
+}
+
+
+int HwIntSetup(XScuGic *InterruptController, u16 DeviceId)
+{
+	int Status;
+
+	GicConfig = XScuGic_LookupConfig(DeviceId);
+	if (NULL == GicConfig) {
+		return XST_FAILURE;
+	}
+
+	Status = XScuGic_CfgInitialize(InterruptController, GicConfig, GicConfig->CpuBaseAddress);
+	if (Status != XST_SUCCESS) {
+		return XST_FAILURE;
+	}
+
+
+	Status = XScuGic_SelfTest(InterruptController);
+	if (Status != XST_SUCCESS) {
+		return XST_FAILURE;
+	}
+
+	Xil_ExceptionRegisterHandler(XIL_EXCEPTION_ID_INT, (Xil_ExceptionHandler) XScuGic_InterruptHandler, InterruptController);
+
+	Xil_ExceptionEnable();
+
+	Status = XScuGic_Connect(InterruptController, INTC_DEVICE_INT_ID, (Xil_ExceptionHandler)DeviceDriverHandler, (void *)InterruptController);
+	if (Status != XST_SUCCESS) {
+		return XST_FAILURE;
+	}
+
+	// make rising edge triggered
+	u8 iPriority, iTrigger;
+	XScuGic_GetPriorityTriggerType(InterruptController,INTC_DEVICE_INT_ID,&iPriority,&iTrigger);
+	iTrigger = 0x03;
+	XScuGic_SetPriorityTriggerType(InterruptController,INTC_DEVICE_INT_ID, iPriority, iTrigger);
+	xil_printf("iPriority = 0x%x, iTrigger = 0x%x\r\n", iPriority, iTrigger);
+
+	// Enable the interrupt for the device and then cause (simulate) an interrupt so the handlers will be called
+	XScuGic_Enable(InterruptController, INTC_DEVICE_INT_ID);
+
+	return XST_SUCCESS;
+}
+
+
+
+
+void DeviceDriverHandler(void *CallbackRef)
+{
+    InterruptProcessed = TRUE; // Indicate the interrupt has been processed using a shared variable
+    (*((uint32_t*)XPAR_AXI_GPIO_0_BASEADDR)) -= 1;  // flash the LEDs
 }
 

@@ -90,11 +90,9 @@ int ScuGicExample(u16 DeviceId)
 		return XST_FAILURE;
 	}
 
+	Xil_ExceptionRegisterHandler(XIL_EXCEPTION_ID_INT, (Xil_ExceptionHandler) XScuGic_InterruptHandler, &InterruptController);
 
-	Status = SetUpInterruptSystem(&InterruptController);
-	if (Status != XST_SUCCESS) {
-		return XST_FAILURE;
-	}
+	Xil_ExceptionEnable();
 
 	Status = XScuGic_Connect(&InterruptController, INTC_DEVICE_INT_ID,
 			   (Xil_ExceptionHandler)DeviceDriverHandler,
@@ -105,21 +103,14 @@ int ScuGicExample(u16 DeviceId)
 
 	u8 iPriority, iTrigger;
 	XScuGic_GetPriorityTriggerType(&InterruptController,INTC_DEVICE_INT_ID,&iPriority,&iTrigger);
-	xil_printf("iPriority = 0x%x, iTrigger = 0x%x\r\n", iPriority, iTrigger);
 	iTrigger = 0x03;
 	XScuGic_SetPriorityTriggerType(&InterruptController,INTC_DEVICE_INT_ID, iPriority, iTrigger);
-	XScuGic_GetPriorityTriggerType(&InterruptController,INTC_DEVICE_INT_ID,&iPriority,&iTrigger);
 	xil_printf("iPriority = 0x%x, iTrigger = 0x%x\r\n", iPriority, iTrigger);
 
 
 	// Enable the interrupt for the device and then cause (simulate) an interrupt so the handlers will be called
 	XScuGic_Enable(&InterruptController, INTC_DEVICE_INT_ID);
 
-//	// Simulate the Interrupt
-//	Status = XScuGic_SoftwareIntr(&InterruptController,	INTC_DEVICE_INT_ID, XSCUGIC_SPI_CPU0_MASK);
-//	if (Status != XST_SUCCESS) {
-//		return XST_FAILURE;
-//	}
 
 	uint32_t loopcount = 0;
 	while (1) {
@@ -138,67 +129,10 @@ int ScuGicExample(u16 DeviceId)
 	return XST_SUCCESS;
 }
 
-/******************************************************************************/
-/**
-*
-* This function connects the interrupt handler of the interrupt controller to
-* the processor.  This function is separate to allow it to be customized for
-* each application.  Each processor or RTOS may require unique processing to
-* connect the interrupt handler.
-*
-* @param	XScuGicInstancePtr is the instance of the interrupt controller
-*		that needs to be worked on.
-*
-* @return	None.
-*
-* @note		None.
-*
-****************************************************************************/
-int SetUpInterruptSystem(XScuGic *XScuGicInstancePtr)
-{
 
-	//* Connect the interrupt controller interrupt handler to the hardware
-	//* interrupt handling logic in the ARM processor.
-	Xil_ExceptionRegisterHandler(XIL_EXCEPTION_ID_INT, 
-			(Xil_ExceptionHandler) XScuGic_InterruptHandler,
-			XScuGicInstancePtr);
-
-	//* Enable interrupts in the ARM
-	Xil_ExceptionEnable();
-
-	return XST_SUCCESS;
-}
-
-/******************************************************************************/
-/**
-*
-* This function is designed to look like an interrupt handler in a device
-* driver. This is typically a 2nd level handler that is called from the
-* interrupt controller interrupt handler.  This handler would typically
-* perform device specific processing such as reading and writing the registers
-* of the device to clear the interrupt condition and pass any data to an
-* application using the device driver.  Many drivers already provide this
-* handler and the user is not required to create it.
-*
-* @param	CallbackRef is passed back to the device driver's interrupt
-*		handler by the XScuGic driver.  It was given to the XScuGic
-*		driver in the XScuGic_Connect() function call.  It is typically
-*		a pointer to the device driver instance variable.
-*		In this example, we do not care about the callback
-*		reference, so we passed it a 0 when connecting the handler to
-*		the XScuGic driver and we make no use of it here.
-*
-* @return	None.
-*
-* @note		None.
-*
-****************************************************************************/
 void DeviceDriverHandler(void *CallbackRef)
 {
-	/*
-	 * Indicate the interrupt has been processed using a shared variable
-	 */
-	InterruptProcessed = TRUE;
+	InterruptProcessed = TRUE; // Indicate the interrupt has been processed using a shared variable
 
-	(*((uint32_t*)XPAR_AXI_GPIO_0_BASEADDR)) -= 1;
+	(*((uint32_t*)XPAR_AXI_GPIO_0_BASEADDR)) -= 1;  // flash the LEDs
 }
