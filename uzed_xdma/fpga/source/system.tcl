@@ -902,9 +902,9 @@ proc create_root_design { parentCell } {
    CONFIG.PSU__SATA__REF_CLK_FREQ {125} \
    CONFIG.PSU__SATA__REF_CLK_SEL {Ref Clk1} \
    CONFIG.PSU__SAXIGP0__DATA_WIDTH {32} \
-   CONFIG.PSU__SAXIGP1__DATA_WIDTH {128} \
+   CONFIG.PSU__SAXIGP1__DATA_WIDTH {32} \
    CONFIG.PSU__SAXIGP2__DATA_WIDTH {128} \
-   CONFIG.PSU__SAXIGP3__DATA_WIDTH {128} \
+   CONFIG.PSU__SAXIGP3__DATA_WIDTH {32} \
    CONFIG.PSU__SAXIGP4__DATA_WIDTH {128} \
    CONFIG.PSU__SAXIGP5__DATA_WIDTH {128} \
    CONFIG.PSU__SAXIGP6__DATA_WIDTH {128} \
@@ -1025,6 +1025,7 @@ proc create_root_design { parentCell } {
   # Restore current instance
   current_bd_instance $oldCurInst
 
+  validate_bd_design
   save_bd_design
 }
 # End of create_root_design()
@@ -1036,6 +1037,4 @@ proc create_root_design { parentCell } {
 
 create_root_design ""
 
-
-common::send_gid_msg -ssname BD::TCL -id 2053 -severity "WARNING" "This Tcl script was generated from a block design that has not been validated. It is possible that design <$design_name> may result in errors during validation."
 
