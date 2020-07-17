@@ -26,7 +26,7 @@ module top (
     output  logic [7:0]     leds_8bits_tri_o
 );
 
-    logic axi_aclk;
+    logic axi_aclk, axi_aresetn;
     logic[31:0] axi_count; 
     always_ff @(posedge axi_aclk) axi_count <= axi_count + 1;
     
@@ -64,6 +64,8 @@ module top (
         .pmod_tri_o         (pmod_tri_o),
         //
         .axi_aclk           (axi_aclk),
+        .axi_aresetn        (axi_aresetn),
+        //
         .irq                ({axi_count[31:17],dma_introut}),
         //
         .dma_introut(dma_introut),
