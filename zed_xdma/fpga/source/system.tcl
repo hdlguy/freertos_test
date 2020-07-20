@@ -690,10 +690,10 @@ proc create_root_design { parentCell } {
   set system_ila_0 [ create_bd_cell -type ip -vlnv xilinx.com:ip:system_ila:1.1 system_ila_0 ]
   set_property -dict [ list \
    CONFIG.ALL_PROBE_SAME_MU_CNT {1} \
-   CONFIG.C_BRAM_CNT {12} \
+   CONFIG.C_BRAM_CNT {11.5} \
    CONFIG.C_INPUT_PIPE_STAGES {2} \
    CONFIG.C_MON_TYPE {MIX} \
-   CONFIG.C_NUM_MONITOR_SLOTS {3} \
+   CONFIG.C_NUM_MONITOR_SLOTS {4} \
    CONFIG.C_NUM_OF_PROBES {1} \
    CONFIG.C_PROBE0_MU_CNT {1} \
    CONFIG.C_SLOT {2} \
@@ -725,6 +725,7 @@ connect_bd_intf_net -intf_net [get_bd_intf_nets axi_dma_0_M_AXI_SG] [get_bd_intf
   connect_bd_intf_net -intf_net ps7_0_axi_periph_M01_AXI [get_bd_intf_pins axi_gpio_1/S_AXI] [get_bd_intf_pins ps7_0_axi_periph/M01_AXI]
   connect_bd_intf_net -intf_net ps7_0_axi_periph_M02_AXI [get_bd_intf_pins axi_bram_ctrl_0/S_AXI] [get_bd_intf_pins ps7_0_axi_periph/M02_AXI]
   connect_bd_intf_net -intf_net ps7_0_axi_periph_M03_AXI [get_bd_intf_pins axi_dma_0/S_AXI_LITE] [get_bd_intf_pins ps7_0_axi_periph/M03_AXI]
+connect_bd_intf_net -intf_net [get_bd_intf_nets ps7_0_axi_periph_M03_AXI] [get_bd_intf_pins ps7_0_axi_periph/M03_AXI] [get_bd_intf_pins system_ila_0/SLOT_3_AXI]
 
   # Create port connections
   connect_bd_net -net In0_0_1 [get_bd_ports irq] [get_bd_pins xlconcat_0/In0]
