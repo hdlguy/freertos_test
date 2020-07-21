@@ -20,7 +20,6 @@ generate_target {synthesis implementation} [get_files ./proj.srcs/sources_1/bd/s
 set_property synth_checkpoint_mode None [get_files ./proj.srcs/sources_1/bd/system/system.bd]
 
 read_verilog -sv ../source/top.sv
-read_verilog -sv ../source/intr_pulse_gen.sv
 
 read_xdc ../source/top.xdc
 

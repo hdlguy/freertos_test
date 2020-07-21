@@ -145,12 +145,11 @@ int HwIntSetup(XScuGic *InterruptController, u16 DeviceId)
 	XScuGic_SetPriorityTriggerType(InterruptController,INTC_DEVICE_INT_ID, iPriority, iTrigger);
 	xil_printf("iPriority = 0x%x, iTrigger = 0x%x\r\n", iPriority, iTrigger);
 
-	// Enable the interrupt for the device and then cause (simulate) an interrupt so the handlers will be called
+	// Enable the interrupt for the device
 	XScuGic_Enable(InterruptController, INTC_DEVICE_INT_ID);
 
 	return XST_SUCCESS;
 }
-
 
 
 
