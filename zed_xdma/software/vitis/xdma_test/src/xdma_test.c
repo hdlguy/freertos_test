@@ -11,10 +11,13 @@
 
 #define RX_BD_SPACE_BASE	(XPAR_AXI_BRAM_CTRL_0_S_AXI_BASEADDR) // bram for BD
 #define RX_BD_SPACE_HIGH	(XPAR_AXI_BRAM_CTRL_0_S_AXI_HIGHADDR)
-
 #define DMA_DEV_ID		XPAR_AXI_DMA_0_DEVICE_ID
+#define NUM_BD  4
+#define MAX_PKT_LEN		0x100
+
 XAxiDma AxiDma;
 int xdma_setup(XAxiDma * InstancePtr, XAxiDma_Config *Config);
+uint32_t bufarray[NUM_BD][16];
 
 #define INTC_DEVICE_ID		XPAR_SCUGIC_0_DEVICE_ID
 // pl_ps interrupt ID[15:0] = 91:84, 68:64, 63:61
@@ -53,10 +56,7 @@ int main(void)
 	}
 
 	xil_printf("Successfully ran GIC Example Test\r\n");
-	//return XST_SUCCESS;
 
-
-	// ********* now lets set up the xdma
 	XAxiDma_Config *AxiDmaConfig = NULL;
 	xdma_setup(&AxiDma, AxiDmaConfig);
 
@@ -80,6 +80,8 @@ int xdma_setup(XAxiDma * InstancePtr, XAxiDma_Config *Config)
 		xil_printf("Device configured with Scatter Gather \r\n");
 	}
 
+
+
 	xil_printf("AxiDma.RegBase = 0x%08x\r\n", AxiDma.RegBase);
     xil_printf("XAXIDMA_CR_OFFSET = 0x%08x\r\n", XAxiDma_ReadReg(InstancePtr->RegBase, XAXIDMA_RX_OFFSET+XAXIDMA_CR_OFFSET));
     xil_printf("XAXIDMA_SR_OFFSET = 0x%08x\r\n", XAxiDma_ReadReg(InstancePtr->RegBase, XAXIDMA_RX_OFFSET+XAXIDMA_SR_OFFSET));
@@ -90,13 +92,87 @@ int xdma_setup(XAxiDma * InstancePtr, XAxiDma_Config *Config)
 	RxRingPtr = XAxiDma_GetRxRing(&AxiDma);
 
 	XAxiDma_BdRingIntDisable(RxRingPtr, XAXIDMA_IRQ_ALL_MASK);
-	int BdCount = 4;
+	int BdCount = NUM_BD;
 	Status = XAxiDma_BdRingCreate(RxRingPtr, RX_BD_SPACE_BASE, RX_BD_SPACE_BASE, XAXIDMA_BD_MINIMUM_ALIGNMENT, BdCount);
+	if (Status != XST_SUCCESS) {
+		xil_printf("Rx bd create failed with %d\r\n", Status);
+	} else {
+		xil_printf("Rx bd create passed! %d\r\n", Status);
+	}
 
 	xil_printf("RxRingPtr->FirstBdAddr = 0x%08x\r\n", RxRingPtr->FirstBdAddr);
 	xil_printf("RxRingPtr->LastBdAddr = 0x%08x\r\n", RxRingPtr->LastBdAddr);
 
+	XAxiDma_Bd BdTemplate;
+	XAxiDma_BdClear(&BdTemplate);
+	Status = XAxiDma_BdRingClone(RxRingPtr, &BdTemplate);
+	if (Status != XST_SUCCESS) {
+		xil_printf("Rx bd clone failed with %d\r\n", Status);
+	} else {
+		xil_printf("Rx bd clone passed!  %d\r\n", Status);
+	}
 
+	int FreeBdCount =  RxRingPtr->FreeCnt;
+	xil_printf("RxRingPtr->FreeCnt = %d\r\n", RxRingPtr->FreeCnt);
+
+	XAxiDma_Bd *BdPtr, *BdCurPtr;
+	UINTPTR RxBufferPtr;
+	Status = XAxiDma_BdRingAlloc(RxRingPtr, FreeBdCount, &BdPtr);
+	if (Status != XST_SUCCESS) {
+		xil_printf("Rx bd alloc failed with %d\r\n", Status);
+	} else {
+		xil_printf("Rx bd alloc Passed! %d\r\n", Status);
+	}
+	BdCurPtr = BdPtr;         // pointer to buffer descriptor.
+	RxBufferPtr = (UINTPTR)bufarray;   // pointer to buffer.
+
+	for (int Index = 0; Index < FreeBdCount; Index++) {
+
+		Status = XAxiDma_BdSetBufAddr(BdCurPtr, RxBufferPtr);
+		if (Status != XST_SUCCESS) {
+			xil_printf("Rx set buffer addr %x on BD %x failed %d\r\n", (unsigned int)RxBufferPtr, (UINTPTR)BdCurPtr, Status);
+		} else {
+			xil_printf("Rx set buffer addr %x on BD %x passed %d\r\n", (unsigned int)RxBufferPtr, (UINTPTR)BdCurPtr, Status);
+		}
+
+		Status = XAxiDma_BdSetLength(BdCurPtr, MAX_PKT_LEN, RxRingPtr->MaxTransferLen);
+		if (Status != XST_SUCCESS) {
+			xil_printf("Rx set length %d on BD %x failed %d\r\n", MAX_PKT_LEN, (UINTPTR)BdCurPtr, Status);
+		} else {
+			xil_printf("Rx set length %d on BD %x passed %d\r\n", MAX_PKT_LEN, (UINTPTR)BdCurPtr, Status);
+		}
+
+		XAxiDma_BdSetCtrl(BdCurPtr, 0);
+		XAxiDma_BdSetId(BdCurPtr, RxBufferPtr);
+		RxBufferPtr += MAX_PKT_LEN;
+		BdCurPtr = (XAxiDma_Bd *)XAxiDma_BdRingNext(RxRingPtr, BdCurPtr);
+
+	}
+
+	XAxiDma_SelectCyclicMode(InstancePtr, XAXIDMA_DEVICE_TO_DMA, TRUE);
+
+    xil_printf("XAXIDMA_CR_OFFSET = 0x%08x\r\n", XAxiDma_ReadReg(InstancePtr->RegBase, XAXIDMA_RX_OFFSET+XAXIDMA_CR_OFFSET));
+    xil_printf("XAXIDMA_SR_OFFSET = 0x%08x\r\n", XAxiDma_ReadReg(InstancePtr->RegBase, XAXIDMA_RX_OFFSET+XAXIDMA_SR_OFFSET));
+
+	Status = XAxiDma_BdRingToHw(RxRingPtr, FreeBdCount, BdPtr);
+	if (Status != XST_SUCCESS) {
+		xil_printf("Rx ToHw failed with %d\r\n", Status);
+	} else {
+		xil_printf("Rx ToHw passed with %d\r\n", Status);
+	}
+
+    xil_printf("XAXIDMA_CR_OFFSET = 0x%08x\r\n", XAxiDma_ReadReg(InstancePtr->RegBase, XAXIDMA_RX_OFFSET+XAXIDMA_CR_OFFSET));
+    xil_printf("XAXIDMA_SR_OFFSET = 0x%08x\r\n", XAxiDma_ReadReg(InstancePtr->RegBase, XAXIDMA_RX_OFFSET+XAXIDMA_SR_OFFSET));
+
+	Status = XAxiDma_BdRingStart(RxRingPtr);
+	if (Status != XST_SUCCESS) {
+		xil_printf("Rx start BD ring failed with %d\r\n", Status);
+	} else {
+		xil_printf("Rx start BD ring passed with %d\r\n", Status);
+	}
+
+
+	return(0);
 }
 
 
@@ -175,68 +251,4 @@ void DeviceDriverHandler(void *CallbackRef)
 	*((uint32_t *)XPAR_AXI_GPIO_0_BASEADDR) -= 1;
 }
 
-
-//static int TxSetup(XAxiDma * AxiDmaInstPtr)
-//{
-//	XAxiDma_BdRing *TxRingPtr = XAxiDma_GetTxRing(&AxiDma);
-//	XAxiDma_Bd BdTemplate;
-//	int Status;
-//	u32 BdCount;
-//
-//	/* Disable all TX interrupts before TxBD space setup */
-//	XAxiDma_BdRingIntDisable(TxRingPtr, XAXIDMA_IRQ_ALL_MASK);
-//
-//	/* Setup TxBD space  */
-//	BdCount = XAxiDma_BdRingCntCalc(XAXIDMA_BD_MINIMUM_ALIGNMENT,
-//			(UINTPTR)TX_BD_SPACE_HIGH - (UINTPTR)TX_BD_SPACE_BASE + 1);
-//
-//	Status = XAxiDma_BdRingCreate(TxRingPtr, TX_BD_SPACE_BASE,
-//				     TX_BD_SPACE_BASE,
-//				     XAXIDMA_BD_MINIMUM_ALIGNMENT, BdCount);
-//	if (Status != XST_SUCCESS) {
-//
-//		xil_printf("Failed create BD ring\r\n");
-//		return XST_FAILURE;
-//	}
-//
-//	/*
-//	 * Like the RxBD space, we create a template and set all BDs to be the
-//	 * same as the template. The sender has to set up the BDs as needed.
-//	 */
-//	XAxiDma_BdClear(&BdTemplate);
-//	Status = XAxiDma_BdRingClone(TxRingPtr, &BdTemplate);
-//	if (Status != XST_SUCCESS) {
-//
-//		xil_printf("Failed clone BDs\r\n");
-//		return XST_FAILURE;
-//	}
-//
-//	/*
-//	 * Set the coalescing threshold, so only one transmit interrupt
-//	 * occurs for this example
-//	 *
-//	 * If you would like to have multiple interrupts to happen, change
-//	 * the COALESCING_COUNT to be a smaller value
-//	 */
-//	Status = XAxiDma_BdRingSetCoalesce(TxRingPtr, COALESCING_COUNT, DELAY_TIMER_COUNT);
-//	if (Status != XST_SUCCESS) {
-//
-//		xil_printf("Failed set coalescing"
-//		" %d/%d\r\n",COALESCING_COUNT, DELAY_TIMER_COUNT);
-//		return XST_FAILURE;
-//	}
-//
-//	/* Enable all TX interrupts */
-//	XAxiDma_BdRingIntEnable(TxRingPtr, XAXIDMA_IRQ_ALL_MASK);
-//
-//	/* Start the TX channel */
-//	Status = XAxiDma_BdRingStart(TxRingPtr);
-//	if (Status != XST_SUCCESS) {
-//
-//		xil_printf("Failed bd start\r\n");
-//		return XST_FAILURE;
-//	}
-//
-//	return XST_SUCCESS;
-//}
 
