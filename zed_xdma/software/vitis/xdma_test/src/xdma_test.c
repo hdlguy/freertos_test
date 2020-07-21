@@ -17,7 +17,7 @@
 
 XAxiDma AxiDma;
 int xdma_setup(XAxiDma * InstancePtr, XAxiDma_Config *Config);
-uint32_t bufarray[NUM_BD][16];
+uint32_t bufarray[NUM_BD][256/4];
 
 #define INTC_DEVICE_ID		XPAR_SCUGIC_0_DEVICE_ID
 // pl_ps interrupt ID[15:0] = 91:84, 68:64, 63:61
@@ -47,7 +47,7 @@ int main(void)
 
 	Xil_AssertSetCallback(AssertPrint);
 
-	xil_printf("GIC Example Test\r\n");
+	xil_printf("\r\nGIC Example Test\r\n");
 
 	Status = ScuGicExample(INTC_DEVICE_ID);
 	if (Status != XST_SUCCESS) {
@@ -164,13 +164,20 @@ int xdma_setup(XAxiDma * InstancePtr, XAxiDma_Config *Config)
     xil_printf("XAXIDMA_CR_OFFSET = 0x%08x\r\n", XAxiDma_ReadReg(InstancePtr->RegBase, XAXIDMA_RX_OFFSET+XAXIDMA_CR_OFFSET));
     xil_printf("XAXIDMA_SR_OFFSET = 0x%08x\r\n", XAxiDma_ReadReg(InstancePtr->RegBase, XAXIDMA_RX_OFFSET+XAXIDMA_SR_OFFSET));
 
+	XAxiDma_Bd *JunkBdPtr;
+	JunkBdPtr = BdPtr;
+    for (int i=0; i<NUM_BD; i++){
+    	JunkBdPtr = (XAxiDma_Bd *)XAxiDma_BdRingNext(RxRingPtr, JunkBdPtr);
+    	xil_printf("JunkBdPtr = 0x%08x\r\n", JunkBdPtr);
+    }
+
+    // Start it dma running!
 	Status = XAxiDma_BdRingStart(RxRingPtr);
 	if (Status != XST_SUCCESS) {
 		xil_printf("Rx start BD ring failed with %d\r\n", Status);
 	} else {
 		xil_printf("Rx start BD ring passed with %d\r\n", Status);
 	}
-
 
 	return(0);
 }

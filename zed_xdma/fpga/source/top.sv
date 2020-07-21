@@ -79,13 +79,14 @@ module top (
     
     
     stream_gen stream_gen_inst(
-        .clk       (axi_aclk),
-        .aresetn   (axi_aresetn),
-        .tdata     (stream_tdata),
-        .tkeep     (stream_tkeep),
-        .tlast     (stream_tlast),
-        .tready    (stream_tready),
-        .tvalid    (stream_tvalid)
+        .clk        (axi_aclk),
+        .aresetn    (axi_aresetn),
+        .frame_size (256/4-1),
+        .tdata      (stream_tdata),
+        .tkeep      (stream_tkeep),
+        .tlast      (stream_tlast),
+        .tready     (stream_tready),
+        .tvalid     (stream_tvalid)
     );
     
 endmodule
