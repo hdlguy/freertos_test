@@ -47,6 +47,9 @@ int main(void)
 
 	Xil_AssertSetCallback(AssertPrint);
 
+	XAxiDma_Config *AxiDmaConfig = NULL;
+	xdma_setup(&AxiDma, AxiDmaConfig);
+
 	xil_printf("\r\nGIC Example Test\r\n");
 
 	Status = ScuGicExample(INTC_DEVICE_ID);
@@ -56,9 +59,6 @@ int main(void)
 	}
 
 	xil_printf("Successfully ran GIC Example Test\r\n");
-
-	XAxiDma_Config *AxiDmaConfig = NULL;
-	xdma_setup(&AxiDma, AxiDmaConfig);
 
 }
 
@@ -80,8 +80,6 @@ int xdma_setup(XAxiDma * InstancePtr, XAxiDma_Config *Config)
 		xil_printf("Device configured with Scatter Gather \r\n");
 	}
 
-
-
 	xil_printf("AxiDma.RegBase = 0x%08x\r\n", AxiDma.RegBase);
     xil_printf("XAXIDMA_CR_OFFSET = 0x%08x\r\n", XAxiDma_ReadReg(InstancePtr->RegBase, XAXIDMA_RX_OFFSET+XAXIDMA_CR_OFFSET));
     xil_printf("XAXIDMA_SR_OFFSET = 0x%08x\r\n", XAxiDma_ReadReg(InstancePtr->RegBase, XAXIDMA_RX_OFFSET+XAXIDMA_SR_OFFSET));
@@ -92,6 +90,7 @@ int xdma_setup(XAxiDma * InstancePtr, XAxiDma_Config *Config)
 	RxRingPtr = XAxiDma_GetRxRing(&AxiDma);
 
 	XAxiDma_BdRingIntDisable(RxRingPtr, XAXIDMA_IRQ_ALL_MASK);
+
 	int BdCount = NUM_BD;
 	Status = XAxiDma_BdRingCreate(RxRingPtr, RX_BD_SPACE_BASE, RX_BD_SPACE_BASE, XAXIDMA_BD_MINIMUM_ALIGNMENT, BdCount);
 	if (Status != XST_SUCCESS) {
@@ -102,6 +101,9 @@ int xdma_setup(XAxiDma * InstancePtr, XAxiDma_Config *Config)
 
 	xil_printf("RxRingPtr->FirstBdAddr = 0x%08x\r\n", RxRingPtr->FirstBdAddr);
 	xil_printf("RxRingPtr->LastBdAddr = 0x%08x\r\n", RxRingPtr->LastBdAddr);
+	xil_printf("RxRingPtr->BdaRestart = 0x%08x\r\n", RxRingPtr->BdaRestart);
+	xil_printf("RxRingPtr->CyclicBd = 0x%08x\r\n", RxRingPtr->CyclicBd);
+	xil_printf("RxRingPtr->Cyclic = 0x%08x\r\n", RxRingPtr->Cyclic);
 
 	XAxiDma_Bd BdTemplate;
 	XAxiDma_BdClear(&BdTemplate);
@@ -149,7 +151,6 @@ int xdma_setup(XAxiDma * InstancePtr, XAxiDma_Config *Config)
 
 	}
 
-	XAxiDma_SelectCyclicMode(InstancePtr, XAXIDMA_DEVICE_TO_DMA, TRUE);
 
     xil_printf("XAXIDMA_CR_OFFSET = 0x%08x\r\n", XAxiDma_ReadReg(InstancePtr->RegBase, XAXIDMA_RX_OFFSET+XAXIDMA_CR_OFFSET));
     xil_printf("XAXIDMA_SR_OFFSET = 0x%08x\r\n", XAxiDma_ReadReg(InstancePtr->RegBase, XAXIDMA_RX_OFFSET+XAXIDMA_SR_OFFSET));
@@ -163,6 +164,7 @@ int xdma_setup(XAxiDma * InstancePtr, XAxiDma_Config *Config)
 
     xil_printf("XAXIDMA_CR_OFFSET = 0x%08x\r\n", XAxiDma_ReadReg(InstancePtr->RegBase, XAXIDMA_RX_OFFSET+XAXIDMA_CR_OFFSET));
     xil_printf("XAXIDMA_SR_OFFSET = 0x%08x\r\n", XAxiDma_ReadReg(InstancePtr->RegBase, XAXIDMA_RX_OFFSET+XAXIDMA_SR_OFFSET));
+    xil_printf("XAXIDMA_TDESC_OFFSET = 0x%08x\r\n", XAxiDma_ReadReg(InstancePtr->RegBase, XAXIDMA_RX_OFFSET+XAXIDMA_TDESC_OFFSET));
 
 	XAxiDma_Bd *JunkBdPtr;
 	JunkBdPtr = BdPtr;
@@ -171,6 +173,9 @@ int xdma_setup(XAxiDma * InstancePtr, XAxiDma_Config *Config)
     	xil_printf("JunkBdPtr = 0x%08x\r\n", JunkBdPtr);
     }
 
+	XAxiDma_BdRingEnableCyclicDMA(RxRingPtr);
+	XAxiDma_SelectCyclicMode(InstancePtr, XAXIDMA_DEVICE_TO_DMA, 1);
+
     // Start it dma running!
 	Status = XAxiDma_BdRingStart(RxRingPtr);
 	if (Status != XST_SUCCESS) {
@@ -178,6 +183,10 @@ int xdma_setup(XAxiDma * InstancePtr, XAxiDma_Config *Config)
 	} else {
 		xil_printf("Rx start BD ring passed with %d\r\n", Status);
 	}
+
+    xil_printf("XAXIDMA_CR_OFFSET = 0x%08x\r\n", XAxiDma_ReadReg(InstancePtr->RegBase, XAXIDMA_RX_OFFSET+XAXIDMA_CR_OFFSET));
+    xil_printf("XAXIDMA_SR_OFFSET = 0x%08x\r\n", XAxiDma_ReadReg(InstancePtr->RegBase, XAXIDMA_RX_OFFSET+XAXIDMA_SR_OFFSET));
+    xil_printf("XAXIDMA_TDESC_OFFSET = 0x%08x\r\n", XAxiDma_ReadReg(InstancePtr->RegBase, XAXIDMA_RX_OFFSET+XAXIDMA_TDESC_OFFSET));
 
 	return(0);
 }
