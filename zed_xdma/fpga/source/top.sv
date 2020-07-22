@@ -66,7 +66,7 @@ module top (
         .axi_aclk           (axi_aclk),
         .axi_aresetn        (axi_aresetn),
         //
-        .irq                ({axi_count[31:17],dma_introut}),
+        .irq                ({axi_count[31:17],dma_introut}),  // Interrupt ID = [91:84], [68:61]
         //
         .dma_introut(dma_introut),
         //

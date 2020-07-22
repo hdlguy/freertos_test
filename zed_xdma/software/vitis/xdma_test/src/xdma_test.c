@@ -14,9 +14,11 @@
 #define DMA_DEV_ID		XPAR_AXI_DMA_0_DEVICE_ID
 #define NUM_BD  4
 #define MAX_PKT_LEN		0x100
+#define XDMA_INT_ID    61
 
 XAxiDma AxiDma;
 int xdma_setup(XAxiDma * InstancePtr, XAxiDma_Config *Config);
+void xdma_handler(void *CallbackRef);
 uint32_t bufarray[NUM_BD][256/4] __attribute__((aligned(256)));
 
 #define INTC_DEVICE_ID		XPAR_SCUGIC_0_DEVICE_ID
@@ -47,10 +49,10 @@ int main(void)
 
 	xil_printf("\r\nStarting test\r\n");
 
+	intr_setup(INTC_DEVICE_ID);
+
 	XAxiDma_Config *AxiDmaConfig = NULL;
 	xdma_setup(&AxiDma, AxiDmaConfig);
-
-	intr_setup(INTC_DEVICE_ID);
 
 	xil_printf("Test running\r\n");
 
@@ -150,9 +152,11 @@ int intr_setup(u16 DeviceId)
 		return XST_FAILURE;
 	}
 
-	Status = XScuGic_Connect(&InterruptController, INTC_DEVICE_INT_ID,
-			   (Xil_ExceptionHandler)DeviceDriverHandler,
-			   (void *)&InterruptController);
+	Status = XScuGic_Connect(&InterruptController, INTC_DEVICE_INT_ID, (Xil_ExceptionHandler)DeviceDriverHandler, (void *)&InterruptController);
+	if (Status != XST_SUCCESS) {
+		return XST_FAILURE;
+	}
+	Status = XScuGic_Connect(&InterruptController, XDMA_INT_ID, (Xil_ExceptionHandler)xdma_handler, (void *)XAxiDma_GetRxRing(&AxiDma));
 	if (Status != XST_SUCCESS) {
 		return XST_FAILURE;
 	}
@@ -162,16 +166,21 @@ int intr_setup(u16 DeviceId)
 	XScuGic_GetPriorityTriggerType(&InterruptController,INTC_DEVICE_INT_ID,&priority_val,&trigger_val);
 	trigger_val = 0x03;
 	XScuGic_SetPriorityTriggerType(&InterruptController,INTC_DEVICE_INT_ID,priority_val,trigger_val);
+	xil_printf("INTC_DEVICE_INT_ID: priority_val = 0x%08x, trigger_val = 0x%08x\r\n", priority_val, trigger_val);
+
+	XScuGic_GetPriorityTriggerType(&InterruptController,XDMA_INT_ID,&priority_val,&trigger_val);
+	trigger_val = 0x03; priority_val = 0xA8;
+	XScuGic_SetPriorityTriggerType(&InterruptController,XDMA_INT_ID,priority_val,trigger_val);
+	xil_printf("XDMA_INT_ID: priority_val = 0x%08x, trigger_val = 0x%08x\r\n", priority_val, trigger_val);
 
 	XScuGic_Enable(&InterruptController, INTC_DEVICE_INT_ID);
+	XScuGic_Enable(&InterruptController, XDMA_INT_ID);
 }
 
 
 int SetUpInterruptSystem(XScuGic *XScuGicInstancePtr)
 {
-	Xil_ExceptionRegisterHandler(XIL_EXCEPTION_ID_INT, 
-			(Xil_ExceptionHandler) XScuGic_InterruptHandler,
-			XScuGicInstancePtr);
+	Xil_ExceptionRegisterHandler(XIL_EXCEPTION_ID_INT, (Xil_ExceptionHandler) XScuGic_InterruptHandler, XScuGicInstancePtr);
 	Xil_ExceptionEnable();
 	return XST_SUCCESS;
 }
@@ -182,5 +191,19 @@ void DeviceDriverHandler(void *CallbackRef)
 	InterruptProcessed = TRUE;	
 	*((uint32_t *)XPAR_AXI_GPIO_0_BASEADDR) -= 1;
 }
+
+void xdma_handler(void *CallbackRef)
+{
+	*((uint32_t *)XPAR_AXI_GPIO_1_BASEADDR) -= 1;
+
+	XAxiDma_BdRing *RxRingPtr = (XAxiDma_BdRing *) CallbackRef;
+    u32 IrqStatus;
+    int TimeOut;
+
+	IrqStatus = XAxiDma_BdRingGetIrq(RxRingPtr);
+	XAxiDma_BdRingAckIrq(RxRingPtr, IrqStatus);
+
+}
+
 
 
