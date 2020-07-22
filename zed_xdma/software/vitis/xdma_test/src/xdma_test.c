@@ -13,13 +13,14 @@
 #define RX_BD_SPACE_HIGH	(XPAR_AXI_BRAM_CTRL_0_S_AXI_HIGHADDR)
 #define DMA_DEV_ID		XPAR_AXI_DMA_0_DEVICE_ID
 #define NUM_BD  4
-#define MAX_PKT_LEN		0x100
+#define MAX_PKT_LEN		0x0800 // 0x100
 #define XDMA_INT_ID    61
+//#define XDMA_BYTES_PER_FRAME 1024 // 256
 
 XAxiDma AxiDma;
 int xdma_setup(XAxiDma * InstancePtr, XAxiDma_Config *Config);
 void xdma_handler(void *CallbackRef);
-uint32_t bufarray[NUM_BD][256/4] __attribute__((aligned(256)));
+uint32_t bufarray[NUM_BD][MAX_PKT_LEN/4] __attribute__((aligned(256)));
 
 #define INTC_DEVICE_ID		XPAR_SCUGIC_0_DEVICE_ID
 // pl_ps interrupt ID[15:0] = 91:84, 68:64, 63:61
@@ -44,6 +45,7 @@ int main(void)
 {
 	*((uint32_t *)XPAR_AXI_GPIO_0_BASEADDR) = 0xff;
 	*((uint32_t *)XPAR_AXI_GPIO_1_BASEADDR) = 0xffff;
+	*((uint32_t *)XPAR_AXI_GPIO_2_BASEADDR) = MAX_PKT_LEN/4-1;  // sets the frame length of the data generator.
 
 	Xil_AssertSetCallback(AssertPrint);
 

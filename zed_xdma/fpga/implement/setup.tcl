@@ -10,9 +10,9 @@ load_features ipintegrator
 tclapp::install ultrafast -quiet
 
 
-#read_ip ../../source/srl32/srl32.xci
-#upgrade_ip -quiet  [get_ips *]
-#generate_target {all} [get_ips *]
+read_ip ../source/stream_gen/stream_gen_fifo/stream_gen_fifo.xci
+upgrade_ip -quiet  [get_ips *]
+generate_target {all} [get_ips *]
 
 source ../source/system.tcl
 generate_target {synthesis implementation} [get_files ./proj.srcs/sources_1/bd/system/system.bd]

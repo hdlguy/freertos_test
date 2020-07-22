@@ -8,15 +8,12 @@ set_property target_language Verilog [current_project]
 set_property default_lib work [current_project]
 load_features ipintegrator
 
-#read_ip ../code_delay_nco/ca_rom/ca_rom.xci
-#read_ip ../rx_chan_ila/rx_chan_ila.xci
-#upgrade_ip -quiet  [get_ips *]
-#generate_target {all} [get_ips *]
+read_ip ../stream_gen_fifo/stream_gen_fifo.xci
+upgrade_ip -quiet  [get_ips *]
+generate_target {all} [get_ips *]
 
-# Read in the hdl source.
 read_verilog -sv ../stream_gen.sv
 read_verilog -sv ../stream_gen_tb.sv
-
 
 add_files -fileset sim_1 -norecurse ./stream_gen_tb_behav.wcfg
 

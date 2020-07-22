@@ -36,6 +36,8 @@ module top (
     logic        stream_tlast;
     logic        stream_tready;
     logic        stream_tvalid;
+    logic [31:0] frame_size;
+    logic [15:0] data_rate;
 
     system system_i (
         .DDR_addr           (DDR_addr),
@@ -61,7 +63,8 @@ module top (
         .FIXED_IO_ps_srstb  (FIXED_IO_ps_srstb),
         //
         .leds_8bits_tri_o   (leds_8bits_tri_o),        
-        .pmod_tri_o         (pmod_tri_o),
+        .pmod_tri_o         (pmod_tri_o),        
+        .frame_size_tri_o   (frame_size),
         //
         .axi_aclk           (axi_aclk),
         .axi_aresetn        (axi_aresetn),
@@ -77,11 +80,13 @@ module top (
         .stream_tvalid  (stream_tvalid)
     );
     
+    assign data_rate = 100-1;
     
     stream_gen stream_gen_inst(
         .clk        (axi_aclk),
         .aresetn    (axi_aresetn),
-        .frame_size (256/4-1),
+        .frame_size (frame_size),
+        .data_rate  (data_rate),
         .tdata      (stream_tdata),
         .tkeep      (stream_tkeep),
         .tlast      (stream_tlast),
