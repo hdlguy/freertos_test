@@ -22,6 +22,7 @@ int xdma_setup(XAxiDma * InstancePtr, XAxiDma_Config *Config);
 void xdma_handler(void *CallbackRef);
 uint32_t bufarray[NUM_BD][MAX_PKT_LEN/4] __attribute__((aligned(256)));
 volatile static int xdma_intr_detected = FALSE;
+volatile static uint32_t* BufReadyPtr;
 
 #define INTC_DEVICE_ID		XPAR_SCUGIC_0_DEVICE_ID
 // pl_ps interrupt ID[15:0] = 91:84, 68:64, 63:61
@@ -59,43 +60,50 @@ int main(void)
 
 	xil_printf("Test running\r\n");
 
-	while(!xdma_intr_detected);  // wait for xdma interrupt.
-	xdma_intr_detected = FALSE;
-	xil_printf("xdma_int_detected!\r\n");
-
-	XAxiDma_BdRing *RxRingPtr;
-	RxRingPtr = XAxiDma_GetRxRing(&AxiDma);
-	xil_printf("RxRingPtr->RingIndex = 0x%08x\r\n",      RxRingPtr->RingIndex);
-
-	// foreground processing
+	// do error checking on the data.
+	uint32_t temp1, temp2, *checkbuf;	
+	int data_error = 0;
+	int intr_count = 0;
 	for(;;){
-		for(int i=0; i<101; i++){
-		    while(!xdma_intr_detected);  // wait for xdma interrupt.
-		    xdma_intr_detected = FALSE;
+	    while(!xdma_intr_detected);  // wait for xdma interrupt.
+	    xdma_intr_detected = FALSE;	    	    
+	    
+		checkbuf = BufReadyPtr;		
+		//xil_printf("checkbuf = 0x%08x\r\n", checkbuf);
+
+		for (int i=0; i<(MAX_PKT_LEN/4); i++) {
+			temp2 = checkbuf[i];
+			if ((temp2 != (temp1+1)) && (5 < intr_count)) data_error++;
+			temp1 = temp2;
 		}
-		xil_printf("xdma_int_detected 101 times!\r\n");
-		uint32_t* CurrBdPtr, PrevBdPtr, CurrBufAddr, PrevBufAddr;
-		CurrBdPtr = XAxiDma_BdRingGetCurrBd(RxRingPtr);
-		PrevBdPtr = XAxiDma_BdRingPrev(RxRingPtr, CurrBdPtr);
-		CurrBufAddr = XAxiDma_BdGetBufAddr(CurrBdPtr);
-		PrevBufAddr = XAxiDma_BdGetBufAddr(PrevBdPtr);
-		xil_printf("CurrBdPtr = 0x%08x, PrevBdPtr = 0x%08x, CurrBufAddr = 0x%08x, PrevBufAddr = 0x%08x\r\n", CurrBdPtr,PrevBdPtr,CurrBufAddr,PrevBufAddr);
-		for (int j=0; j<5; j++) xil_printf("0x%08x\r\n", *((uint32_t *)PrevBufAddr+j));
+		//xil_printf("temp1 = 0x%08x, intr_count = %d\r\n", temp1, intr_count);
+		if ((intr_count%64)==0) xil_printf("data_error = %d\r\n", data_error);
+		
+	    intr_count++;
 	}
 }
 
 
 void xdma_handler(void *CallbackRef) // xdma interrupt handler
 {
-	*((uint32_t *)XPAR_AXI_GPIO_1_BASEADDR) -= 1;
+	*((uint32_t *)XPAR_AXI_GPIO_1_BASEADDR) -= 1;  // flash some LEDs
 
 	XAxiDma_BdRing *RxRingPtr = (XAxiDma_BdRing *) CallbackRef;
+    
+    // ack the interrupt
     u32 IrqStatus;
-
 	IrqStatus = XAxiDma_BdRingGetIrq(RxRingPtr);
 	XAxiDma_BdRingAckIrq(RxRingPtr, IrqStatus);
+	
+	// determine the pointer to the buffer with new data.
+	uint32_t* CurrBdPtr, PrevBdPtr, CurrBufAddr, PrevBufAddr;
+	CurrBdPtr = XAxiDma_BdRingGetCurrBd(RxRingPtr);
+	PrevBdPtr = XAxiDma_BdRingPrev(RxRingPtr, CurrBdPtr);
+	CurrBufAddr = XAxiDma_BdGetBufAddr(CurrBdPtr);
+	PrevBufAddr = XAxiDma_BdGetBufAddr(PrevBdPtr);
+	BufReadyPtr = PrevBufAddr;
 
-	xdma_intr_detected = TRUE;
+	xdma_intr_detected = TRUE;  // set the semaphore
 }
 
 
