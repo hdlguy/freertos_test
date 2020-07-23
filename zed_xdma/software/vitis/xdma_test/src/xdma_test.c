@@ -22,7 +22,7 @@ int xdma_setup(XAxiDma * InstancePtr, XAxiDma_Config *Config);
 void xdma_handler(void *CallbackRef);
 uint32_t bufarray[NUM_BD][MAX_PKT_LEN/4] __attribute__((aligned(256)));
 volatile static int xdma_intr_detected = FALSE;
-volatile static uint32_t* BufReadyPtr;
+uint32_t* BufReadyPtr;
 
 #define INTC_DEVICE_ID		XPAR_SCUGIC_0_DEVICE_ID
 // pl_ps interrupt ID[15:0] = 91:84, 68:64, 63:61
@@ -69,15 +69,13 @@ int main(void)
 	    xdma_intr_detected = FALSE;	    	    
 	    
 		checkbuf = BufReadyPtr;		
-		//xil_printf("checkbuf = 0x%08x\r\n", checkbuf);
 
 		for (int i=0; i<(MAX_PKT_LEN/4); i++) {
 			temp2 = checkbuf[i];
 			if ((temp2 != (temp1+1)) && (5 < intr_count)) data_error++;
 			temp1 = temp2;
 		}
-		//xil_printf("temp1 = 0x%08x, intr_count = %d\r\n", temp1, intr_count);
-		if ((intr_count%64)==0) xil_printf("data_error = %d\r\n", data_error);
+		if ((intr_count%4096)==0) xil_printf("data_error = %d\r\n", data_error);
 		
 	    intr_count++;
 	}
@@ -96,10 +94,9 @@ void xdma_handler(void *CallbackRef) // xdma interrupt handler
 	XAxiDma_BdRingAckIrq(RxRingPtr, IrqStatus);
 	
 	// determine the pointer to the buffer with new data.
-	uint32_t* CurrBdPtr, PrevBdPtr, CurrBufAddr, PrevBufAddr;
+	uint32_t *CurrBdPtr, *PrevBdPtr, *PrevBufAddr;
 	CurrBdPtr = XAxiDma_BdRingGetCurrBd(RxRingPtr);
 	PrevBdPtr = XAxiDma_BdRingPrev(RxRingPtr, CurrBdPtr);
-	CurrBufAddr = XAxiDma_BdGetBufAddr(CurrBdPtr);
 	PrevBufAddr = XAxiDma_BdGetBufAddr(PrevBdPtr);
 	BufReadyPtr = PrevBufAddr;
 
@@ -220,6 +217,8 @@ int intr_setup(u16 DeviceId)
 
 	XScuGic_Enable(&InterruptController, INTC_DEVICE_INT_ID);
 	XScuGic_Enable(&InterruptController, XDMA_INT_ID);
+
+	return(0);
 }
 
 

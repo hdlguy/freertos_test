@@ -80,7 +80,7 @@ module top (
         .stream_tvalid  (stream_tvalid)
     );
     
-    assign data_rate = 10000-1;
+    assign data_rate = 98-1;
     
     stream_gen stream_gen_inst(
         .clk        (axi_aclk),
