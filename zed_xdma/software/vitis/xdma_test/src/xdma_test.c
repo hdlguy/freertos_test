@@ -21,6 +21,7 @@ XAxiDma AxiDma;
 int xdma_setup(XAxiDma * InstancePtr, XAxiDma_Config *Config);
 void xdma_handler(void *CallbackRef);
 uint32_t bufarray[NUM_BD][MAX_PKT_LEN/4] __attribute__((aligned(256)));
+volatile static int xdma_intr_detected = FALSE;
 
 #define INTC_DEVICE_ID		XPAR_SCUGIC_0_DEVICE_ID
 // pl_ps interrupt ID[15:0] = 91:84, 68:64, 63:61
@@ -58,7 +59,43 @@ int main(void)
 
 	xil_printf("Test running\r\n");
 
-	for(;;);
+	while(!xdma_intr_detected);  // wait for xdma interrupt.
+	xdma_intr_detected = FALSE;
+	xil_printf("xdma_int_detected!\r\n");
+
+	XAxiDma_BdRing *RxRingPtr;
+	RxRingPtr = XAxiDma_GetRxRing(&AxiDma);
+	xil_printf("RxRingPtr->RingIndex = 0x%08x\r\n",      RxRingPtr->RingIndex);
+
+	// foreground processing
+	for(;;){
+		for(int i=0; i<101; i++){
+		    while(!xdma_intr_detected);  // wait for xdma interrupt.
+		    xdma_intr_detected = FALSE;
+		}
+		xil_printf("xdma_int_detected 101 times!\r\n");
+		uint32_t* CurrBdPtr, PrevBdPtr, CurrBufAddr, PrevBufAddr;
+		CurrBdPtr = XAxiDma_BdRingGetCurrBd(RxRingPtr);
+		PrevBdPtr = XAxiDma_BdRingPrev(RxRingPtr, CurrBdPtr);
+		CurrBufAddr = XAxiDma_BdGetBufAddr(CurrBdPtr);
+		PrevBufAddr = XAxiDma_BdGetBufAddr(PrevBdPtr);
+		xil_printf("CurrBdPtr = 0x%08x, PrevBdPtr = 0x%08x, CurrBufAddr = 0x%08x, PrevBufAddr = 0x%08x\r\n", CurrBdPtr,PrevBdPtr,CurrBufAddr,PrevBufAddr);
+		for (int j=0; j<5; j++) xil_printf("0x%08x\r\n", *((uint32_t *)PrevBufAddr+j));
+	}
+}
+
+
+void xdma_handler(void *CallbackRef) // xdma interrupt handler
+{
+	*((uint32_t *)XPAR_AXI_GPIO_1_BASEADDR) -= 1;
+
+	XAxiDma_BdRing *RxRingPtr = (XAxiDma_BdRing *) CallbackRef;
+    u32 IrqStatus;
+
+	IrqStatus = XAxiDma_BdRingGetIrq(RxRingPtr);
+	XAxiDma_BdRingAckIrq(RxRingPtr, IrqStatus);
+
+	xdma_intr_detected = TRUE;
 }
 
 
@@ -149,10 +186,8 @@ int intr_setup(u16 DeviceId)
 		return XST_FAILURE;
 	}
 
-	Status = SetUpInterruptSystem(&InterruptController);
-	if (Status != XST_SUCCESS) {
-		return XST_FAILURE;
-	}
+	Xil_ExceptionRegisterHandler(XIL_EXCEPTION_ID_INT, (Xil_ExceptionHandler) XScuGic_InterruptHandler, &InterruptController);
+	Xil_ExceptionEnable();
 
 	Status = XScuGic_Connect(&InterruptController, INTC_DEVICE_INT_ID, (Xil_ExceptionHandler)DeviceDriverHandler, (void *)&InterruptController);
 	if (Status != XST_SUCCESS) {
@@ -180,32 +215,14 @@ int intr_setup(u16 DeviceId)
 }
 
 
-int SetUpInterruptSystem(XScuGic *XScuGicInstancePtr)
-{
-	Xil_ExceptionRegisterHandler(XIL_EXCEPTION_ID_INT, (Xil_ExceptionHandler) XScuGic_InterruptHandler, XScuGicInstancePtr);
-	Xil_ExceptionEnable();
-	return XST_SUCCESS;
-}
-
-
-void DeviceDriverHandler(void *CallbackRef)
+void DeviceDriverHandler(void *CallbackRef)  // counter interrupt handler
 {
 	InterruptProcessed = TRUE;	
 	*((uint32_t *)XPAR_AXI_GPIO_0_BASEADDR) -= 1;
 }
 
-void xdma_handler(void *CallbackRef)
-{
-	*((uint32_t *)XPAR_AXI_GPIO_1_BASEADDR) -= 1;
 
-	XAxiDma_BdRing *RxRingPtr = (XAxiDma_BdRing *) CallbackRef;
-    u32 IrqStatus;
-    int TimeOut;
 
-	IrqStatus = XAxiDma_BdRingGetIrq(RxRingPtr);
-	XAxiDma_BdRingAckIrq(RxRingPtr, IrqStatus);
-
-}
 
 
 
