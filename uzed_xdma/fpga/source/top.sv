@@ -31,14 +31,21 @@ module top (
         .stream_in_tvalid   (stream_in_tvalid)
     );    
     
+    logic [31:0] frame_size;
+    assign frame_size = 32'h0000_0800 - 1;
+    logic [15:0] data_rate;
+    assign data_rate = 100-1;
+    
     stream_gen stream_gen_inst(
-        .clk       (axi_aclk), 
-        .aresetn   (axi_aresetn), 
-        .tdata     (stream_in_tdata), 
-        .tkeep     (stream_in_tkeep),
-        .tlast     (stream_in_tlast),
-        .tready    (stream_in_tready),
-        .tvalid    (stream_in_tvalid)
+        .clk        (axi_aclk), 
+        .aresetn    (axi_aresetn), 
+        .frame_size (frame_size),
+        .data_rate  (data_rate),
+        .tdata      (stream_in_tdata), 
+        .tkeep      (stream_in_tkeep),
+        .tlast      (stream_in_tlast),
+        .tready     (stream_in_tready),
+        .tvalid     (stream_in_tvalid)
     );
     
 endmodule
