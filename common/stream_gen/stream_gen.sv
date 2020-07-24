@@ -1,11 +1,12 @@
-//
+// A little data generator to test Stream to Memory Mapped (S2MM) DMA.
+// A 32 bit count is produced with flow control.
 module stream_gen (
     input   logic           clk,
     input   logic           aresetn,
-    //
+    // parameters
     input   logic [31:0]    frame_size,  // number of words between tlast assertions.
     input   logic [15:0]    data_rate,   // (clock rate)/(word rate) - 1 = (100e6)/(Fs/4) - 1.
-    //
+    // AXI Stream Interface
     output  logic [31:0]    tdata,
     output  logic  [3:0]    tkeep,
     output  logic           tlast,

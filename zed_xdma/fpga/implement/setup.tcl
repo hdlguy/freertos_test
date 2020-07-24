@@ -10,7 +10,7 @@ load_features ipintegrator
 tclapp::install ultrafast -quiet
 
 
-read_ip ../source/stream_gen/stream_gen_fifo/stream_gen_fifo.xci
+read_ip ../../../common/stream_gen/stream_gen_fifo/stream_gen_fifo.xci
 upgrade_ip -quiet  [get_ips *]
 generate_target {all} [get_ips *]
 
@@ -18,7 +18,7 @@ source ../source/system.tcl
 generate_target {synthesis implementation} [get_files ./proj.srcs/sources_1/bd/system/system.bd]
 set_property synth_checkpoint_mode None [get_files ./proj.srcs/sources_1/bd/system/system.bd]
 
-read_verilog -sv ../source/stream_gen/stream_gen.sv
+read_verilog -sv ../../../common/stream_gen/stream_gen.sv
 read_verilog -sv ../source/top.sv
 
 read_xdc ../source/top.xdc
