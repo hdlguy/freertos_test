@@ -3,10 +3,24 @@
 #include "task.h"
 #include "queue.h"
 #include "timers.h"
-/* Xilinx includes. */
 #include "xil_printf.h"
 #include "xparameters.h"
 #include "xscugic.h"
+#include "xaxidma.h"
+
+// xdma stuff
+#define RX_BD_SPACE_BASE	(XPAR_AXI_BRAM_CTRL_0_S_AXI_BASEADDR) // bram for BD
+#define RX_BD_SPACE_HIGH	(XPAR_AXI_BRAM_CTRL_0_S_AXI_HIGHADDR)
+#define DMA_DEV_ID		XPAR_AXI_DMA_0_DEVICE_ID
+#define NUM_BD  4
+#define MAX_PKT_LEN		0x0800 // 0x100
+#define XDMA_INT_ID     XPAR_FABRIC_AXIDMA_0_VEC_ID
+XAxiDma AxiDma;
+int xdma_setup(XAxiDma * InstancePtr, XAxiDma_Config *Config);
+void xdma_handler(void *CallbackRef);
+uint32_t bufarray[NUM_BD][MAX_PKT_LEN/4] __attribute__((aligned(256)));
+volatile static int xdma_intr_detected = FALSE;
+uint32_t* BufReadyPtr;
 
 #define TIMER_ID	1
 #define DELAY_10_SECONDS	10000UL
@@ -56,12 +70,105 @@ int main( void )
 
 	xTimerStart( xTimer, 0 );
 
+	XAxiDma_Config *AxiDmaConfig = NULL;
+	xdma_setup(&AxiDma, AxiDmaConfig);
+
 	int IntStatus = HwIntSetup(&xInterruptController, INTC_DEVICE_ID);
 	xil_printf("IntStatus = 0x%x\r\n", IntStatus);
 
 	vTaskStartScheduler();
 
 	for( ;; );
+}
+
+
+void xdma_handler(void *CallbackRef) // xdma interrupt handler
+{
+	*((uint32_t *)XPAR_AXI_GPIO_1_BASEADDR) -= 1;  // flash some LEDs
+
+	XAxiDma_BdRing *RxRingPtr = (XAxiDma_BdRing *) CallbackRef;
+    
+    // ack the interrupt
+    u32 IrqStatus;
+	IrqStatus = XAxiDma_BdRingGetIrq(RxRingPtr);
+	XAxiDma_BdRingAckIrq(RxRingPtr, IrqStatus);
+	
+	// determine the pointer to the buffer with new data.
+	uint32_t *CurrBdPtr, *PrevBdPtr, *PrevBufAddr;
+	CurrBdPtr = XAxiDma_BdRingGetCurrBd(RxRingPtr);
+	PrevBdPtr = XAxiDma_BdRingPrev(RxRingPtr, CurrBdPtr);
+	PrevBufAddr = XAxiDma_BdGetBufAddr(PrevBdPtr);
+	BufReadyPtr = PrevBufAddr;
+
+	xdma_intr_detected = TRUE;  // set the semaphore
+}
+
+
+int xdma_setup(XAxiDma * InstancePtr, XAxiDma_Config *Config)
+{
+	int Status;
+
+	Config = XAxiDma_LookupConfig(DMA_DEV_ID);
+
+	XAxiDma_CfgInitialize(InstancePtr, Config);
+
+	xil_printf("AxiDma.RegBase = 0x%08x\r\n", AxiDma.RegBase);
+
+	XAxiDma_BdRing *RxRingPtr;
+	RxRingPtr = XAxiDma_GetRxRing(&AxiDma);
+
+	XAxiDma_BdRingIntDisable(RxRingPtr, XAXIDMA_IRQ_ALL_MASK);
+
+	//int BdCount = NUM_BD;
+	Status = XAxiDma_BdRingCreate(RxRingPtr, RX_BD_SPACE_BASE, RX_BD_SPACE_BASE, XAXIDMA_BD_MINIMUM_ALIGNMENT, NUM_BD);
+
+
+	XAxiDma_Bd BdTemplate;
+	XAxiDma_BdClear(&BdTemplate);
+	Status = XAxiDma_BdRingClone(RxRingPtr, &BdTemplate);
+
+	int FreeBdCount =  RxRingPtr->FreeCnt;
+	xil_printf("RxRingPtr->FreeCnt = %d\r\n", RxRingPtr->FreeCnt);
+
+	XAxiDma_Bd *BdPtr, *BdCurPtr;
+	UINTPTR RxBufferPtr;
+	Status = XAxiDma_BdRingAlloc(RxRingPtr, FreeBdCount, &BdPtr);
+
+	BdCurPtr = BdPtr;         // pointer to buffer descriptor.
+	RxBufferPtr = (UINTPTR)bufarray;   // pointer to buffer.
+	for (int Index = 0; Index < FreeBdCount; Index++) {
+		Status = XAxiDma_BdSetBufAddr(BdCurPtr, RxBufferPtr);
+		Status = XAxiDma_BdSetLength(BdCurPtr, MAX_PKT_LEN, RxRingPtr->MaxTransferLen);
+		xil_printf("length: %d, BD: %x, buffer: %x\r\n", MAX_PKT_LEN, (UINTPTR)BdCurPtr, (unsigned int)RxBufferPtr);
+
+		XAxiDma_BdSetCtrl(BdCurPtr, 0);
+		XAxiDma_BdSetId(BdCurPtr, RxBufferPtr);
+		RxBufferPtr += MAX_PKT_LEN;
+		BdCurPtr = (XAxiDma_Bd *)XAxiDma_BdRingNext(RxRingPtr, BdCurPtr);
+	}
+
+	Status = XAxiDma_BdRingToHw(RxRingPtr, FreeBdCount, BdPtr);
+
+	XAxiDma_Bd *JunkBdPtr;
+	JunkBdPtr = BdPtr;
+    for (int i=0; i<NUM_BD; i++){
+    	JunkBdPtr = (XAxiDma_Bd *)XAxiDma_BdRingNext(RxRingPtr, JunkBdPtr);
+    	xil_printf("Ptr[%d] = 0x%08x\r\n", i, JunkBdPtr);
+    }
+
+	XAxiDma_BdRingIntEnable(RxRingPtr, XAXIDMA_IRQ_ALL_MASK);
+	XAxiDma_BdRingEnableCyclicDMA(RxRingPtr);
+	XAxiDma_SelectCyclicMode(InstancePtr, XAXIDMA_DEVICE_TO_DMA, 1);
+
+	Status = XAxiDma_BdRingStart(RxRingPtr);    // Start dma running!
+
+    xil_printf("XAXIDMA_CR_OFFSET = 0x%08x\r\n",    XAxiDma_ReadReg(InstancePtr->RegBase, XAXIDMA_RX_OFFSET+XAXIDMA_CR_OFFSET));
+    xil_printf("XAXIDMA_SR_OFFSET = 0x%08x\r\n",    XAxiDma_ReadReg(InstancePtr->RegBase, XAXIDMA_RX_OFFSET+XAXIDMA_SR_OFFSET));
+	xil_printf("RxRingPtr->FirstBdAddr = 0x%08x\r\n", RxRingPtr->FirstBdAddr);
+	xil_printf("RxRingPtr->LastBdAddr = 0x%08x\r\n",  RxRingPtr->LastBdAddr);
+	xil_printf("RxRingPtr->Cyclic = 0x%08x\r\n",      RxRingPtr->Cyclic);
+
+	return(0);
 }
 
 
@@ -111,46 +218,53 @@ static void vTimerCallback( TimerHandle_t pxTimer )
 
 int HwIntSetup(XScuGic *InterruptController, u16 DeviceId)
 {
-	int Status;
+    int Status;
 
-	GicConfig = XScuGic_LookupConfig(DeviceId);
-	if (NULL == GicConfig) {
-		return XST_FAILURE;
-	}
+    GicConfig = XScuGic_LookupConfig(DeviceId);
+    if (NULL == GicConfig) {
+        return XST_FAILURE;
+    }
 
-	Status = XScuGic_CfgInitialize(InterruptController, GicConfig, GicConfig->CpuBaseAddress);
-	if (Status != XST_SUCCESS) {
-		return XST_FAILURE;
-	}
+    Status = XScuGic_CfgInitialize(InterruptController, GicConfig, GicConfig->CpuBaseAddress);
+    if (Status != XST_SUCCESS) {
+        return XST_FAILURE;
+    }
 
 
-	Status = XScuGic_SelfTest(InterruptController);
-	if (Status != XST_SUCCESS) {
-		return XST_FAILURE;
-	}
+    Status = XScuGic_SelfTest(InterruptController);
+    if (Status != XST_SUCCESS) {
+        return XST_FAILURE;
+    }
 
-	Xil_ExceptionRegisterHandler(XIL_EXCEPTION_ID_INT, (Xil_ExceptionHandler) XScuGic_InterruptHandler, InterruptController);
+    Xil_ExceptionRegisterHandler(XIL_EXCEPTION_ID_INT, (Xil_ExceptionHandler) XScuGic_InterruptHandler, InterruptController);
 
-	Xil_ExceptionEnable();
+    Xil_ExceptionEnable();
 
-	Status = XScuGic_Connect(InterruptController, INTC_DEVICE_INT_ID, (Xil_ExceptionHandler)DeviceDriverHandler, (void *)InterruptController);
-	if (Status != XST_SUCCESS) {
-		return XST_FAILURE;
-	}
+    Status = XScuGic_Connect(InterruptController, INTC_DEVICE_INT_ID, (Xil_ExceptionHandler)DeviceDriverHandler, (void *)InterruptController);
+    if (Status != XST_SUCCESS) {
+        return XST_FAILURE;
+    }
+    Status = XScuGic_Connect(InterruptController, XDMA_INT_ID,        (Xil_ExceptionHandler)xdma_handler,        (void *)XAxiDma_GetRxRing(&AxiDma));
+    if (Status != XST_SUCCESS) {
+    	return XST_FAILURE;
+    }
 
-	// make rising edge triggered
-	u8 iPriority, iTrigger;
-	XScuGic_GetPriorityTriggerType(InterruptController,INTC_DEVICE_INT_ID,&iPriority,&iTrigger);
-	iTrigger = 0x03;
-	XScuGic_SetPriorityTriggerType(InterruptController,INTC_DEVICE_INT_ID, iPriority, iTrigger);
-	xil_printf("iPriority = 0x%x, iTrigger = 0x%x\r\n", iPriority, iTrigger);
+    // make rising edge triggered
+    u8 iPriority, iTrigger;
+    XScuGic_GetPriorityTriggerType(InterruptController,INTC_DEVICE_INT_ID,&iPriority,&iTrigger);
+    iTrigger = 0x03;
+    XScuGic_SetPriorityTriggerType(InterruptController,INTC_DEVICE_INT_ID, iPriority, iTrigger);
 
-	// Enable the interrupt for the device and then cause (simulate) an interrupt so the handlers will be called
-	XScuGic_Enable(InterruptController, INTC_DEVICE_INT_ID);
+    XScuGic_GetPriorityTriggerType(InterruptController,XDMA_INT_ID,&iPriority,&iTrigger);
+    iTrigger = 0x03;
+    XScuGic_SetPriorityTriggerType(InterruptController,XDMA_INT_ID, iPriority, iTrigger);
 
-	return XST_SUCCESS;
+    // Enable the interrupt for the device
+    XScuGic_Enable(InterruptController, INTC_DEVICE_INT_ID);
+    XScuGic_Enable(InterruptController, XDMA_INT_ID);
+
+    return XST_SUCCESS;
 }
-
 
 
 

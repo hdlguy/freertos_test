@@ -15,7 +15,6 @@
 #define NUM_BD  4
 #define MAX_PKT_LEN		0x0800 // 0x100
 #define XDMA_INT_ID    61
-//#define XDMA_BYTES_PER_FRAME 1024 // 256
 
 XAxiDma AxiDma;
 int xdma_setup(XAxiDma * InstancePtr, XAxiDma_Config *Config);
