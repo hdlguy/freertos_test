@@ -12,7 +12,7 @@
 #define RX_BD_SPACE_BASE	(XPAR_AXI_BRAM_CTRL_0_S_AXI_BASEADDR) // bram for BD
 #define RX_BD_SPACE_HIGH	(XPAR_AXI_BRAM_CTRL_0_S_AXI_HIGHADDR)
 #define DMA_DEV_ID		XPAR_AXI_DMA_0_DEVICE_ID
-#define NUM_BD  4
+#define NUM_BD  4                  // number of buffer descriptors
 #define MAX_PKT_LEN		0x0800 // 0x100
 #define XDMA_INT_ID     XPAR_FABRIC_AXIDMA_0_VEC_ID
 XAxiDma AxiDma;
@@ -70,21 +70,25 @@ int main( void )
 
 	xTimerStart( xTimer, 0 );
 
-	XAxiDma_Config *AxiDmaConfig = NULL;
-	xdma_setup(&AxiDma, AxiDmaConfig);
-
 	int IntStatus = HwIntSetup(&xInterruptController, INTC_DEVICE_ID);
 	xil_printf("IntStatus = 0x%x\r\n", IntStatus);
 
-	vTaskStartScheduler();
+	XAxiDma_Config *AxiDmaConfig = NULL;
+	xdma_setup(&AxiDma, AxiDmaConfig);
 
-	for( ;; );
+	vTaskStartScheduler();
+	
+	xil_printf("vTaskStartScheduler()\r\n");
+
+
+	for( ;; );  // this never executes.
 }
 
 
 void xdma_handler(void *CallbackRef) // xdma interrupt handler
 {
-	*((uint32_t *)XPAR_AXI_GPIO_1_BASEADDR) -= 1;  // flash some LEDs
+
+	(*((uint32_t *)XPAR_AXI_GPIO_1_BASEADDR)) -= 1;  // flash some LEDs
 
 	XAxiDma_BdRing *RxRingPtr = (XAxiDma_BdRing *) CallbackRef;
     
@@ -101,6 +105,7 @@ void xdma_handler(void *CallbackRef) // xdma interrupt handler
 	BufReadyPtr = PrevBufAddr;
 
 	xdma_intr_detected = TRUE;  // set the semaphore
+
 }
 
 
@@ -119,9 +124,7 @@ int xdma_setup(XAxiDma * InstancePtr, XAxiDma_Config *Config)
 
 	XAxiDma_BdRingIntDisable(RxRingPtr, XAXIDMA_IRQ_ALL_MASK);
 
-	//int BdCount = NUM_BD;
 	Status = XAxiDma_BdRingCreate(RxRingPtr, RX_BD_SPACE_BASE, RX_BD_SPACE_BASE, XAXIDMA_BD_MINIMUM_ALIGNMENT, NUM_BD);
-
 
 	XAxiDma_Bd BdTemplate;
 	XAxiDma_BdClear(&BdTemplate);
@@ -160,7 +163,7 @@ int xdma_setup(XAxiDma * InstancePtr, XAxiDma_Config *Config)
 	XAxiDma_BdRingEnableCyclicDMA(RxRingPtr);
 	XAxiDma_SelectCyclicMode(InstancePtr, XAXIDMA_DEVICE_TO_DMA, 1);
 
-	Status = XAxiDma_BdRingStart(RxRingPtr);    // Start dma running!
+	//Status = XAxiDma_BdRingStart(RxRingPtr);    // Start dma running!
 
     xil_printf("XAXIDMA_CR_OFFSET = 0x%08x\r\n",    XAxiDma_ReadReg(InstancePtr->RegBase, XAXIDMA_RX_OFFSET+XAXIDMA_CR_OFFSET));
     xil_printf("XAXIDMA_SR_OFFSET = 0x%08x\r\n",    XAxiDma_ReadReg(InstancePtr->RegBase, XAXIDMA_RX_OFFSET+XAXIDMA_SR_OFFSET));
@@ -189,7 +192,12 @@ static void prvRxTask( void *pvParameters )
 	for( ;; ) {
 		xQueueReceive( xQueue,	Recdstring,	portMAX_DELAY );
 		xil_printf( "Rx task received string from Tx task: %s\r\n", Recdstring );
-	    (*((uint32_t*)XPAR_AXI_GPIO_1_BASEADDR)) -= 1;  // flash the PMOD LEDs
+		xil_printf("xdma_intr_detected = %d\r\n", xdma_intr_detected);
+		xil_printf("InterruptProcessed = %d\r\n", InterruptProcessed);
+		XAxiDma_BdRingStart(XAxiDma_GetRxRing(&AxiDma));    // Start dma running!
+
+
+	    //(*((uint32_t*)XPAR_AXI_GPIO_1_BASEADDR)) -= 1;
 		RxtaskCntr++;
 	}
 }
@@ -245,6 +253,7 @@ int HwIntSetup(XScuGic *InterruptController, u16 DeviceId)
         return XST_FAILURE;
     }
     Status = XScuGic_Connect(InterruptController, XDMA_INT_ID,        (Xil_ExceptionHandler)xdma_handler,        (void *)XAxiDma_GetRxRing(&AxiDma));
+    xil_printf("XDMA_INT_ID = %d, xdma_handler = 0x%08x, (void *)XAxiDma_GetRxRing(&AxiDma) = 0x%08x\r\n", XDMA_INT_ID, xdma_handler, (void *)XAxiDma_GetRxRing(&AxiDma));
     if (Status != XST_SUCCESS) {
     	return XST_FAILURE;
     }
@@ -254,10 +263,12 @@ int HwIntSetup(XScuGic *InterruptController, u16 DeviceId)
     XScuGic_GetPriorityTriggerType(InterruptController,INTC_DEVICE_INT_ID,&iPriority,&iTrigger);
     iTrigger = 0x03;
     XScuGic_SetPriorityTriggerType(InterruptController,INTC_DEVICE_INT_ID, iPriority, iTrigger);
+    xil_printf("INTC_DEVICE_INT_ID: iPriority = 0x%08x\r\n", iPriority);
 
     XScuGic_GetPriorityTriggerType(InterruptController,XDMA_INT_ID,&iPriority,&iTrigger);
     iTrigger = 0x03;
     XScuGic_SetPriorityTriggerType(InterruptController,XDMA_INT_ID, iPriority, iTrigger);
+    xil_printf("XDMA_INT_ID: iPriority = 0x%08x\r\n", iPriority);
 
     // Enable the interrupt for the device
     XScuGic_Enable(InterruptController, INTC_DEVICE_INT_ID);
