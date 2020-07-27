@@ -29,10 +29,12 @@ uint32_t* BufReadyPtr;
 
 static void prvTxTask( void *pvParameters );
 static void prvRxTask( void *pvParameters );
+static void prvInitTask( void *pvParameters );
 static void vTimerCallback( TimerHandle_t pxTimer );
 
 static TaskHandle_t xTxTask;
 static TaskHandle_t xRxTask;
+static TaskHandle_t xInitTask;
 static QueueHandle_t xQueue = NULL;
 static TimerHandle_t xTimer = NULL;
 char HWstring[15] = "Hello World";
@@ -58,9 +60,11 @@ int main( void )
 	(*((uint32_t*)XPAR_AXI_GPIO_0_BASEADDR)) = 0xff;
 	(*((uint32_t*)XPAR_AXI_GPIO_1_BASEADDR)) = 0xffff;
 
-	xTaskCreate(prvTxTask, ( const char * ) "Tx", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY, &xTxTask);
+	xTaskCreate(prvTxTask,   ( const char * ) "Tx",   configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY, &xTxTask);
 
-	xTaskCreate(prvRxTask, ( const char * ) "GB", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY + 1, &xRxTask );
+	xTaskCreate(prvRxTask,   ( const char * ) "GB",   configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY + 1, &xRxTask );
+
+	xTaskCreate(prvInitTask, ( const char * ) "Init", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY + 2, &xInitTask );
 
 	xQueue = xQueueCreate( 	1, sizeof( HWstring ) );
 	configASSERT( xQueue );
@@ -194,11 +198,22 @@ static void prvRxTask( void *pvParameters )
 		xil_printf( "Rx task received string from Tx task: %s\r\n", Recdstring );
 		xil_printf("xdma_intr_detected = %d\r\n", xdma_intr_detected);
 		xil_printf("InterruptProcessed = %d\r\n", InterruptProcessed);
-		XAxiDma_BdRingStart(XAxiDma_GetRxRing(&AxiDma));    // Start dma running!
+		//XAxiDma_BdRingStart(XAxiDma_GetRxRing(&AxiDma));    // Start dma running!
 
 
 	    //(*((uint32_t*)XPAR_AXI_GPIO_1_BASEADDR)) -= 1;
 		RxtaskCntr++;
+	}
+}
+
+static void prvInitTask( void *pvParameters )
+{
+	char Recdstring[15] = "";
+
+	for( ;; ) {
+		xil_printf("InitTask\r\n");
+		XAxiDma_BdRingStart(XAxiDma_GetRxRing(&AxiDma));    // Start dma running!
+		vTaskDelete( xInitTask );
 	}
 }
 
