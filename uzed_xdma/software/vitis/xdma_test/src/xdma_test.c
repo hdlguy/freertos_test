@@ -58,7 +58,8 @@ int main( void )
 	xil_printf( "Hello from Freertos example main\r\n" );
 
 	(*((uint32_t*)XPAR_AXI_GPIO_0_BASEADDR)) = 0xff;
-	(*((uint32_t*)XPAR_AXI_GPIO_1_BASEADDR)) = 0xffff;
+	(*((uint32_t*)XPAR_AXI_GPIO_1_BASEADDR)) = 0xff;
+	(*((uint32_t*)XPAR_AXI_GPIO_2_BASEADDR)) = 0xff;
 
 	xTaskCreate(prvTxTask,   ( const char * ) "Tx",   configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY, &xTxTask);
 
@@ -201,7 +202,7 @@ static void prvRxTask( void *pvParameters )
 		//XAxiDma_BdRingStart(XAxiDma_GetRxRing(&AxiDma));    // Start dma running!
 
 
-	    //(*((uint32_t*)XPAR_AXI_GPIO_1_BASEADDR)) -= 1;
+	    (*((uint32_t*)XPAR_AXI_GPIO_2_BASEADDR)) -= 1;
 		RxtaskCntr++;
 	}
 }

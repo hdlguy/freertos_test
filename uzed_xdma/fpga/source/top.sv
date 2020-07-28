@@ -1,6 +1,7 @@
 //
 module top (
-    output  logic [15:0]    pmod_tri_o,
+    output  logic [7:0]     pmod_jb_tri_o,
+    output  logic [7:0]     pmod_ja_tri_o,
     output  logic [7:0]     leds_8bits_tri_o
 );
 
@@ -20,7 +21,8 @@ module top (
         .axi_aresetn        (axi_aresetn),
         //
         .leds_8bits_tri_o   (leds_8bits_tri_o),        
-        .pmod_tri_o         (pmod_tri_o),
+        .pmod_jb_tri_o      (pmod_jb_tri_o),   
+        .pmod_ja_tri_o      (pmod_ja_tri_o),
         //
         .pl_ps_irq1         (axi_count[31:24]),
         //
