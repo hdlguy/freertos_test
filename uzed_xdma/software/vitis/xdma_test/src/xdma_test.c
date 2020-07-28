@@ -21,6 +21,11 @@ void xdma_handler(void *CallbackRef);
 uint32_t bufarray[NUM_BD][MAX_PKT_LEN/4] __attribute__((aligned(256)));
 volatile static int xdma_intr_detected = FALSE;
 uint32_t* BufReadyPtr;
+static QueueHandle_t xDmaQueue = NULL;
+static void prvRxDmaTask( void *pvParameters );
+static TaskHandle_t xRxDmaTask;
+char DmaHWstring[15] = "xRxDmaTask";
+
 
 #define TIMER_ID	1
 #define DELAY_10_SECONDS	10000UL
@@ -61,14 +66,16 @@ int main( void )
 	(*((uint32_t*)XPAR_AXI_GPIO_1_BASEADDR)) = 0xff;
 	(*((uint32_t*)XPAR_AXI_GPIO_2_BASEADDR)) = 0xff;
 
-	xTaskCreate(prvTxTask,   ( const char * ) "Tx",   configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY, &xTxTask);
-
-	xTaskCreate(prvRxTask,   ( const char * ) "GB",   configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY + 1, &xRxTask );
-
-	xTaskCreate(prvInitTask, ( const char * ) "Init", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY + 2, &xInitTask );
+	xTaskCreate(prvTxTask,    ( const char * ) "Tx",   configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY + 0, &xTxTask );
+	xTaskCreate(prvRxTask,    ( const char * ) "GB",   configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY + 1, &xRxTask );
+	xTaskCreate(prvInitTask,  ( const char * ) "Init", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY + 2, &xInitTask );
+	xTaskCreate(prvRxDmaTask, ( const char * ) "xdma", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY + 0, &xRxDmaTask );
 
 	xQueue = xQueueCreate( 	1, sizeof( HWstring ) );
 	configASSERT( xQueue );
+
+	xDmaQueue = xQueueCreate( 	1, sizeof( HWstring ) );
+	configASSERT( xDmaQueue );
 
 	xTimer = xTimerCreate( (const char *) "Timer", x10seconds, pdFALSE, (void *)TIMER_ID, vTimerCallback);
 	configASSERT( xTimer );
@@ -82,9 +89,6 @@ int main( void )
 	xdma_setup(&AxiDma, AxiDmaConfig);
 
 	vTaskStartScheduler();
-	
-	xil_printf("vTaskStartScheduler()\r\n");
-
 
 	for( ;; );  // this never executes.
 }
@@ -108,9 +112,12 @@ void xdma_handler(void *CallbackRef) // xdma interrupt handler
 	PrevBdPtr = XAxiDma_BdRingPrev(RxRingPtr, CurrBdPtr);
 	PrevBufAddr = XAxiDma_BdGetBufAddr(PrevBdPtr);
 	BufReadyPtr = PrevBufAddr;
+	xil_printf("0x%08x\r\n",CurrBdPtr);
+
+	*DmaHWstring = BufReadyPtr;
+	xQueueSendToBackFromISR(xDmaQueue, DmaHWstring, NULL);
 
 	xdma_intr_detected = TRUE;  // set the semaphore
-
 }
 
 
@@ -176,7 +183,7 @@ int xdma_setup(XAxiDma * InstancePtr, XAxiDma_Config *Config)
 	xil_printf("RxRingPtr->LastBdAddr = 0x%08x\r\n",  RxRingPtr->LastBdAddr);
 	xil_printf("RxRingPtr->Cyclic = 0x%08x\r\n",      RxRingPtr->Cyclic);
 
-	return(0);
+	return(Status);
 }
 
 
@@ -196,25 +203,32 @@ static void prvRxTask( void *pvParameters )
 
 	for( ;; ) {
 		xQueueReceive( xQueue,	Recdstring,	portMAX_DELAY );
-		xil_printf( "Rx task received string from Tx task: %s\r\n", Recdstring );
+		xil_printf("Rx task received string from Tx task: %s\r\n", Recdstring);
 		xil_printf("xdma_intr_detected = %d\r\n", xdma_intr_detected);
 		xil_printf("InterruptProcessed = %d\r\n", InterruptProcessed);
-		//XAxiDma_BdRingStart(XAxiDma_GetRxRing(&AxiDma));    // Start dma running!
-
 
 	    (*((uint32_t*)XPAR_AXI_GPIO_2_BASEADDR)) -= 1;
 		RxtaskCntr++;
 	}
 }
 
-static void prvInitTask( void *pvParameters )
+static void prvRxDmaTask( void *pvParameters )
 {
 	char Recdstring[15] = "";
 
 	for( ;; ) {
+		xQueueReceive( xDmaQueue, Recdstring, portMAX_DELAY );
+		//xil_printf("%s\r\n", Recdstring);
+		//xil_printf("0x%08x\r\n", *((uint32_t *)Recdstring));
+	}
+}
+
+static void prvInitTask( void *pvParameters )
+{
+	for( ;; ) {
 		xil_printf("InitTask\r\n");
 		XAxiDma_BdRingStart(XAxiDma_GetRxRing(&AxiDma));    // Start dma running!
-		vTaskDelete( xInitTask );
+		vTaskDelete( xInitTask );                           // this task runs once and deletes itself.
 	}
 }
 
