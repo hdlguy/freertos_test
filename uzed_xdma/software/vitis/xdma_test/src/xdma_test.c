@@ -13,7 +13,7 @@
 #define RX_BD_SPACE_HIGH	(XPAR_AXI_BRAM_CTRL_0_S_AXI_HIGHADDR)
 #define DMA_DEV_ID		XPAR_AXI_DMA_0_DEVICE_ID
 #define NUM_BD  4                  // number of buffer descriptors
-#define MAX_PKT_LEN		0x0800 // 0x100
+#define MAX_PKT_LEN		0x0800     // size of each data buffer
 #define XDMA_INT_ID     XPAR_FABRIC_AXIDMA_0_VEC_ID
 XAxiDma AxiDma;
 int xdma_setup(XAxiDma * InstancePtr, XAxiDma_Config *Config);
@@ -107,15 +107,17 @@ void xdma_handler(void *CallbackRef) // xdma interrupt handler
 	XAxiDma_BdRingAckIrq(RxRingPtr, IrqStatus);
 	
 	// determine the pointer to the buffer with new data.
-	uint32_t *CurrBdPtr, *PrevBdPtr, *PrevBufAddr;
+	uint32_t *CurrBdPtr, *PrevBdPtr, *NextBdPtr, *PrevBufAddr;
 	CurrBdPtr = XAxiDma_BdRingGetCurrBd(RxRingPtr);
 	PrevBdPtr = XAxiDma_BdRingPrev(RxRingPtr, CurrBdPtr);
+	NextBdPtr = XAxiDma_BdRingNext(RxRingPtr, CurrBdPtr);
 	PrevBufAddr = XAxiDma_BdGetBufAddr(PrevBdPtr);
 	BufReadyPtr = PrevBufAddr;
-	xil_printf("0x%08x\r\n",CurrBdPtr);
+	//xil_printf("*** CurrBdPtr = 0x%08x, NextBdPtr = 0x%08x\r\n",CurrBdPtr, NextBdPtr);
 
-	*DmaHWstring = BufReadyPtr;
-	xQueueSendToBackFromISR(xDmaQueue, DmaHWstring, NULL);
+	//xQueueSendToBackFromISR(xDmaQueue, DmaHWstring, NULL);
+	xQueueSendToBackFromISR(xDmaQueue, &BufReadyPtr, NULL);
+
 
 	xdma_intr_detected = TRUE;  // set the semaphore
 }
@@ -214,12 +216,17 @@ static void prvRxTask( void *pvParameters )
 
 static void prvRxDmaTask( void *pvParameters )
 {
-	char Recdstring[15] = "";
+	//char Recdstring[15] = "";
+	uint32_t buffer_addr, *buffer_ptr;
 
 	for( ;; ) {
-		xQueueReceive( xDmaQueue, Recdstring, portMAX_DELAY );
+		//xQueueReceive( xDmaQueue, Recdstring, portMAX_DELAY );
 		//xil_printf("%s\r\n", Recdstring);
-		//xil_printf("0x%08x\r\n", *((uint32_t *)Recdstring));
+
+		xQueueReceive( xDmaQueue, &buffer_addr, portMAX_DELAY );
+		xil_printf("buffer_addr = 0x%08x\r\n", buffer_addr);
+		buffer_ptr = (uint32_t *) buffer_addr;
+		for (int i=0; i<4; i++) xil_printf("0x%08x\r\n", buffer_ptr[i]);
 	}
 }
 
@@ -240,13 +247,13 @@ static void vTimerCallback( TimerHandle_t pxTimer )
 	lTimerId = ( long ) pvTimerGetTimerID( pxTimer );
 
 	if (lTimerId != TIMER_ID) {
-		xil_printf("FreeRTOS Hello World Example FAILED");
+		xil_printf("FreeRTOS Hello World Example FAILED\r\n");
 	}
 
 	if (RxtaskCntr >= TIMER_CHECK_THRESHOLD) {
-		xil_printf("Successfully ran FreeRTOS Hello World Example");
+		xil_printf("Successfully ran FreeRTOS Hello World Example\r\n");
 	} else {
-		xil_printf("FreeRTOS Hello World Example FAILED");
+		xil_printf("FreeRTOS Hello World Example FAILED\r\n");
 	}
 
 	vTaskDelete( xRxTask );

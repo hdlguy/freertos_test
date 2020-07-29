@@ -34,9 +34,9 @@ module top (
     );    
     
     logic [31:0] frame_size;
-    assign frame_size = 32'h0000_0800 - 1;
+    assign frame_size = 2048/4 - 1;
     logic [15:0] data_rate;
-    assign data_rate = 100-1;
+    assign data_rate = 64000-1;
     
     stream_gen stream_gen_inst(
         .clk        (axi_aclk), 
