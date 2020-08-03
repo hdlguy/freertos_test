@@ -20,7 +20,7 @@ int xdma_setup(XAxiDma * InstancePtr, XAxiDma_Config *Config);
 void xdma_handler(void *CallbackRef);
 uint32_t bufarray[NUM_BD][MAX_PKT_LEN/4] __attribute__((aligned(256)));
 volatile static int xdma_intr_detected = FALSE;
-uint32_t* BufReadyPtr;
+volatile uint32_t* BufReadyPtr;
 static QueueHandle_t xDmaQueue = NULL;
 static void prvRxDmaTask( void *pvParameters );
 static TaskHandle_t xRxDmaTask;
@@ -113,10 +113,16 @@ void xdma_handler(void *CallbackRef) // xdma interrupt handler
 	NextBdPtr = XAxiDma_BdRingNext(RxRingPtr, CurrBdPtr);
 	PrevBufAddr = XAxiDma_BdGetBufAddr(PrevBdPtr);
 	BufReadyPtr = PrevBufAddr;
-	//xil_printf("*** CurrBdPtr = 0x%08x, NextBdPtr = 0x%08x\r\n",CurrBdPtr, NextBdPtr);
+
+
+//	uint32_t* buffer_ptr = (uint32_t *) BufReadyPtr;
+//	Xil_DCacheInvalidateRange(buffer_ptr, MAX_PKT_LEN);
+//	xil_printf("buffer_ptr = 0x%08x\r\n", buffer_ptr);
+//	for (int i=0; i<8; i++) xil_printf("0x%08x: 0x%08x\r\n", &(buffer_ptr[i]), buffer_ptr[i]);
 
 	//xQueueSendToBackFromISR(xDmaQueue, DmaHWstring, NULL);
-	xQueueSendToBackFromISR(xDmaQueue, &BufReadyPtr, NULL);
+	//xQueueSendToBackFromISR(xDmaQueue, &BufReadyPtr, NULL);
+	xQueueSendFromISR(xDmaQueue, &BufReadyPtr, NULL);
 
 
 	xdma_intr_detected = TRUE;  // set the semaphore
@@ -224,9 +230,11 @@ static void prvRxDmaTask( void *pvParameters )
 		//xil_printf("%s\r\n", Recdstring);
 
 		xQueueReceive( xDmaQueue, &buffer_addr, portMAX_DELAY );
+		Xil_DCacheInvalidateRange(buffer_addr, MAX_PKT_LEN);
+		Xil_DCacheFlushRange(buffer_addr, MAX_PKT_LEN);
 		xil_printf("buffer_addr = 0x%08x\r\n", buffer_addr);
 		buffer_ptr = (uint32_t *) buffer_addr;
-		for (int i=0; i<4; i++) xil_printf("0x%08x\r\n", buffer_ptr[i]);
+		for (int i=0; i<8; i++) xil_printf("0x%08x, 0x%08x\r\n", &(buffer_ptr[i]), buffer_ptr[i]);
 	}
 }
 

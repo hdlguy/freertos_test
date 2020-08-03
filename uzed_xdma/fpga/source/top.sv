@@ -20,7 +20,7 @@ module top (
         .axi_aclk           (axi_aclk),
         .axi_aresetn        (axi_aresetn),
         //
-        .leds_8bits_tri_o   (leds_8bits_tri_o),        
+        .led_8bits_tri_o    (leds_8bits_tri_o),        
         .pmod_jb_tri_o      (pmod_jb_tri_o),   
         .pmod_ja_tri_o      (pmod_ja_tri_o),
         //
