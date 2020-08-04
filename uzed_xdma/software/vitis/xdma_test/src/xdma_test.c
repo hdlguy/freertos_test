@@ -15,6 +15,7 @@
 #define NUM_BD  4                  // number of buffer descriptors
 #define MAX_PKT_LEN		0x0800     // size of each data buffer
 #define XDMA_INT_ID     XPAR_FABRIC_AXIDMA_0_VEC_ID
+#define MARK_UNCACHEABLE        0x701
 XAxiDma AxiDma;
 int xdma_setup(XAxiDma * InstancePtr, XAxiDma_Config *Config);
 void xdma_handler(void *CallbackRef);
@@ -103,16 +104,25 @@ void xdma_handler(void *CallbackRef) // xdma interrupt handler
     
     // ack the interrupt
     u32 IrqStatus;
+    //u32 dmasr, dmacr;
 	IrqStatus = XAxiDma_BdRingGetIrq(RxRingPtr);
+	//dmasr = XAxiDma_ReadReg((RxRingPtr)->ChanBase, XAXIDMA_SR_OFFSET);
+	//dmacr = XAxiDma_ReadReg((RxRingPtr)->ChanBase, XAXIDMA_CR_OFFSET);
 	XAxiDma_BdRingAckIrq(RxRingPtr, IrqStatus);
+	//xil_printf("dmasr = 0x%08x,  dmacr = 0x%08x\r\n", dmasr, dmacr);
 	
 	// determine the pointer to the buffer with new data.
-	uint32_t *CurrBdPtr, *PrevBdPtr, *NextBdPtr, *PrevBufAddr;
+	uint32_t *CurrBdPtr, *PrevBdPtr, *NextBdPtr, *PrevBufAddr, *CurrBufAddr;
 	CurrBdPtr = XAxiDma_BdRingGetCurrBd(RxRingPtr);
 	PrevBdPtr = XAxiDma_BdRingPrev(RxRingPtr, CurrBdPtr);
 	NextBdPtr = XAxiDma_BdRingNext(RxRingPtr, CurrBdPtr);
+	//CurrBufAddr = XAxiDma_BdGetBufAddr(CurrBdPtr);
 	PrevBufAddr = XAxiDma_BdGetBufAddr(PrevBdPtr);
 	BufReadyPtr = PrevBufAddr;
+	//BufReadyPtr = CurrBufAddr;
+
+	xil_printf("XAxiDma_BdGetSts(CurrBdPtr) = 0x%08x\r\n", XAxiDma_BdGetSts(CurrBdPtr));
+
 
 
 //	uint32_t* buffer_ptr = (uint32_t *) BufReadyPtr;
@@ -132,6 +142,8 @@ void xdma_handler(void *CallbackRef) // xdma interrupt handler
 int xdma_setup(XAxiDma * InstancePtr, XAxiDma_Config *Config)
 {
 	int Status;
+
+	//Xil_SetTlbAttributes(RX_BD_SPACE_BASE, MARK_UNCACHEABLE);
 
 	Config = XAxiDma_LookupConfig(DMA_DEV_ID);
 
@@ -230,10 +242,10 @@ static void prvRxDmaTask( void *pvParameters )
 		//xil_printf("%s\r\n", Recdstring);
 
 		xQueueReceive( xDmaQueue, &buffer_addr, portMAX_DELAY );
-//		Xil_DCacheInvalidateRange(buffer_addr, MAX_PKT_LEN);
-//		Xil_DCacheFlushRange(buffer_addr, MAX_PKT_LEN);
-		Xil_DCacheInvalidate();
-		Xil_DCacheFlush();
+		Xil_DCacheInvalidateRange(buffer_addr, MAX_PKT_LEN);
+		Xil_DCacheFlushRange(buffer_addr, MAX_PKT_LEN);
+//		Xil_DCacheInvalidate();
+//		Xil_DCacheFlush();
 		xil_printf("buffer_addr = 0x%08x\r\n", buffer_addr);
 		buffer_ptr = (uint32_t *) buffer_addr;
 		for (int i=0; i<8; i++) xil_printf("0x%08x, 0x%08x\r\n", &(buffer_ptr[i]), buffer_ptr[i]);
