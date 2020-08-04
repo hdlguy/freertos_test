@@ -230,8 +230,10 @@ static void prvRxDmaTask( void *pvParameters )
 		//xil_printf("%s\r\n", Recdstring);
 
 		xQueueReceive( xDmaQueue, &buffer_addr, portMAX_DELAY );
-		Xil_DCacheInvalidateRange(buffer_addr, MAX_PKT_LEN);
-		Xil_DCacheFlushRange(buffer_addr, MAX_PKT_LEN);
+//		Xil_DCacheInvalidateRange(buffer_addr, MAX_PKT_LEN);
+//		Xil_DCacheFlushRange(buffer_addr, MAX_PKT_LEN);
+		Xil_DCacheInvalidate();
+		Xil_DCacheFlush();
 		xil_printf("buffer_addr = 0x%08x\r\n", buffer_addr);
 		buffer_ptr = (uint32_t *) buffer_addr;
 		for (int i=0; i<8; i++) xil_printf("0x%08x, 0x%08x\r\n", &(buffer_ptr[i]), buffer_ptr[i]);
