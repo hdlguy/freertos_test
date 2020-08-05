@@ -74,7 +74,7 @@ int main(void)
 			if ((temp2 != (temp1+1)) && (5 < intr_count)) data_error++;
 			temp1 = temp2;
 		}
-		if ((intr_count%4096)==0) xil_printf("data_error = %d\r\n", data_error);
+		if ((intr_count%4)==0) xil_printf("data_error = %d\r\n", data_error);
 		
 	    intr_count++;
 	}
@@ -100,6 +100,8 @@ void xdma_handler(void *CallbackRef) // xdma interrupt handler
 	BufReadyPtr = PrevBufAddr;
 
 	xdma_intr_detected = TRUE;  // set the semaphore
+
+//	xil_printf("XAxiDma_BdGetSts(PrevBdPtr) = 0x%08x\r\n", XAxiDma_BdGetSts(PrevBdPtr));
 }
 
 
