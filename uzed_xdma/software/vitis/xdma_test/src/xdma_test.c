@@ -121,7 +121,7 @@ void xdma_handler(void *CallbackRef) // xdma interrupt handler
 	BufReadyPtr = PrevBufAddr;
 	//BufReadyPtr = CurrBufAddr;
 
-	xil_printf("XAxiDma_BdGetSts(CurrBdPtr) = 0x%08x\r\n", XAxiDma_BdGetSts(CurrBdPtr));
+	xil_printf("XAxiDma_BdGetSts(PrevBdPtr) = 0x%08x\r\n", XAxiDma_BdGetSts(PrevBdPtr));
 
 
 
@@ -143,7 +143,8 @@ int xdma_setup(XAxiDma * InstancePtr, XAxiDma_Config *Config)
 {
 	int Status;
 
-	//Xil_SetTlbAttributes(RX_BD_SPACE_BASE, MARK_UNCACHEABLE);
+//	Xil_SetTlbAttributes(RX_BD_SPACE_BASE, MARK_UNCACHEABLE);
+//	Xil_SetTlbAttributes(bufarray, MARK_UNCACHEABLE);
 
 	Config = XAxiDma_LookupConfig(DMA_DEV_ID);
 
