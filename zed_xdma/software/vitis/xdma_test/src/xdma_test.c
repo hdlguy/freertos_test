@@ -83,7 +83,7 @@ int main(void)
 
 void xdma_handler(void *CallbackRef) // xdma interrupt handler
 {
-	*((uint32_t *)XPAR_AXI_GPIO_1_BASEADDR) -= 1;  // flash some LEDs
+	(*((uint32_t *)XPAR_AXI_GPIO_1_BASEADDR))--;  // flash some LEDs
 
 	XAxiDma_BdRing *RxRingPtr = (XAxiDma_BdRing *) CallbackRef;
     
@@ -93,10 +93,11 @@ void xdma_handler(void *CallbackRef) // xdma interrupt handler
 	XAxiDma_BdRingAckIrq(RxRingPtr, IrqStatus);
 	
 	// determine the pointer to the buffer with new data.
-	uint32_t *CurrBdPtr, *PrevBdPtr, *PrevBufAddr;
+	XAxiDma_Bd *CurrBdPtr, *PrevBdPtr;
+	uint32_t *PrevBufAddr;
 	CurrBdPtr = XAxiDma_BdRingGetCurrBd(RxRingPtr);
 	PrevBdPtr = XAxiDma_BdRingPrev(RxRingPtr, CurrBdPtr);
-	PrevBufAddr = XAxiDma_BdGetBufAddr(PrevBdPtr);
+	PrevBufAddr = (uint32_t *)XAxiDma_BdGetBufAddr(PrevBdPtr);
 	BufReadyPtr = PrevBufAddr;
 
 	xdma_intr_detected = TRUE;  // set the semaphore
