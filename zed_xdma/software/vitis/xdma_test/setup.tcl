@@ -1,4 +1,6 @@
-# run at linux command line "xsct setup.tcl"
+# run at linux command line:
+#  xsct setup.tcl
+#  vitis -workspace  ./workspace/
 file delete -force ./workspace
 
 set hw   ../../../fpga/implement/results/top.xsa
