@@ -11,7 +11,7 @@ setws ./workspace
 platform create -name "standalone_plat"    -hw $hw -proc $proc -os standalone
 #domain create   -name "standalone_domain"          -proc $proc -os standalone 
 
-app create -name xscugic_test -platform standalone_plat -domain standalone_domain -template "Empty Application"
+app create -name xscugic_test -platform standalone_plat -domain standalone_domain -template "Empty Application(C)"
 file link -symbolic ./workspace/xscugic_test/src/xscugic_example.c ../../../src/xscugic_example.c
 
 
