@@ -5,8 +5,12 @@
 #include "queue.h"
 #include "timers.h"
 
+
 #include "xil_printf.h"
 #include "xparameters.h"
+#include "fpga.h"
+//#include "xstatus.h"
+#include "xuartlite_l.h"
 
 #include <stdio.h>
 
@@ -26,6 +30,7 @@ static void vTimerCallback( TimerHandle_t pxTimer );
 file. */
 static TaskHandle_t xTxTask;
 static TaskHandle_t xRxTask;
+static TaskHandle_t xCommTask;
 static QueueHandle_t xQueue = NULL;
 static TimerHandle_t xTimer = NULL;
 char HWstring[15] = "Hello World";
@@ -33,6 +38,7 @@ long RxtaskCntr = 0;
 
 BaseType_t write_led ( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString );
 BaseType_t read_led  ( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString );
+void vCommandConsoleTask( void *pvParameters );
 
 static const CLI_Command_Definition_t write_led_cmd =
 {
@@ -54,7 +60,7 @@ int main( void )
 	const TickType_t x10seconds = pdMS_TO_TICKS( DELAY_10_SECONDS );
 
 	xil_printf("\n\r");
-	xil_printf( "Hello from Freertos example main\r\n" );
+	xil_printf( "Hello from Freertos example main\n\r" );
 
 	FreeRTOS_CLIRegisterCommand( &write_led_cmd );
 	FreeRTOS_CLIRegisterCommand( &read_led_cmd );
@@ -62,19 +68,11 @@ int main( void )
 	/* Create the two tasks.  The Tx task is given a lower priority than the
 	Rx task, so the Rx task will leave the Blocked state and pre-empt the Tx
 	task as soon as the Tx task places an item in the queue. */
-	xTaskCreate( 	prvTxTask, 					/* The function that implements the task. */
-					( const char * ) "Tx", 		/* Text name for the task, provided to assist debugging only. */
-					configMINIMAL_STACK_SIZE, 	/* The stack allocated to the task. */
-					NULL, 						/* The task parameter is not used, so set to NULL. */
-					tskIDLE_PRIORITY,			/* The task runs at the idle priority. */
-					&xTxTask );
 
-	xTaskCreate( prvRxTask,
-				 ( const char * ) "GB",
-				 configMINIMAL_STACK_SIZE,
-				 NULL,
-				 tskIDLE_PRIORITY + 1,
-				 &xRxTask );
+	//xTaskCreate(prvTxTask, ( const char * ) "Tx", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY + 1, &xTxTask );
+	//xTaskCreate(prvRxTask, ( const char * ) "GB", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY + 2, &xRxTask );
+
+	xTaskCreate( vCommandConsoleTask, ( const char * ) "COMM", configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY + 0, &xCommTask );
 
 	/* Create the queue used by the tasks.  The Rx task has a higher priority
 	than the Tx task, so will preempt the Tx task and remove values from the
@@ -92,13 +90,8 @@ int main( void )
 	 The tasks are deleted in the timer call back and a message is printed to convey that
 	 the example has run successfully.
 	 The timer expiry is set to 10 seconds and the timer set to not auto reload. */
-	xTimer = xTimerCreate( (const char *) "Timer",
-							x10seconds,
-							pdFALSE,
-							(void *) TIMER_ID,
-							vTimerCallback);
-	/* Check the timer was created. */
-	configASSERT( xTimer );
+	xTimer = xTimerCreate( (const char *) "Timer",x10seconds, pdFALSE, (void *) TIMER_ID, vTimerCallback);
+	configASSERT( xTimer ); 	/* Check the timer was created. */
 
 	/* start the timer with a block time of 0 ticks. This means as soon
 	   as the schedule starts the timer will start running and will expire after
@@ -184,21 +177,74 @@ static void vTimerCallback( TimerHandle_t pxTimer )
 BaseType_t write_led( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString )
 {
 	int8_t *pcParameter1;
-	BaseType_t xParameter1StringLength, xResult;
+	BaseType_t xParameter1StringLength;
+	uint32_t *regptr = (uint32_t *)XPAR_M00_AXI_BASEADDR;
 
 	pcParameter1 = FreeRTOS_CLIGetParameter (pcCommandString, 1, &xParameter1StringLength);
 
 	pcParameter1[ xParameter1StringLength ] = 0x00;
 
-	snprintf( pcWriteBuffer, xWriteBufferLen, "write_led CLI functionrn" );
+	snprintf( pcWriteBuffer, xWriteBufferLen, pcCommandString);
+	regptr[LED_CONTROL] = atoi(pcParameter1);
 
 	return(pdFALSE);
 }
 
 BaseType_t read_led ( int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString )
 {
-	snprintf( pcWriteBuffer, xWriteBufferLen, "read_led CLI functionrn" );
+	uint32_t *regptr = (uint32_t *)XPAR_M00_AXI_BASEADDR;
+	char tempstr[10];
+
+	sprintf(tempstr, "led = %d", regptr[LED_CONTROL]);
+	snprintf( pcWriteBuffer, xWriteBufferLen, tempstr);
+
+
 
 	return(pdFALSE);
+}
+
+
+// Let's make a task that takes input from the console.
+#define TEST_BUFFER_SIZE 100
+
+void vCommandConsoleTask( void *pvParameters )
+{
+    uint32_t Index;
+    u32 uart_ptr = XPAR_UARTLITE_0_BASEADDR;
+    char char_temp;
+    BaseType_t xMoreDataToFollow;
+    static char pcOutputString[TEST_BUFFER_SIZE], pcInputString[TEST_BUFFER_SIZE];
+
+    print("Type commands.\n\r");
+
+    Index = 0;
+    for(;;){
+        char_temp = XUartLite_RecvByte(uart_ptr);  // this waits until there is a character available.
+        pcInputString[Index] = char_temp;
+        if (Index != (TEST_BUFFER_SIZE-1)) Index++;
+
+        if (char_temp=='\r'){ // carriage return detected
+            Index = 0;
+
+            //process the command line.
+            do
+            {
+                /* Send the command string to the command interpreter.  Any
+                output generated by the command interpreter will be placed in the
+                pcOutputString buffer. */
+                xMoreDataToFollow = FreeRTOS_CLIProcessCommand (
+                	pcInputString,   /* The command string.*/
+					pcOutputString,   /* The output buffer. */
+					TEST_BUFFER_SIZE/* The size of the output buffer. */
+                );
+
+                /* Write the output generated by the command interpreter to the console. */
+                xil_printf("%s\n\r", pcOutputString);
+
+            } while( xMoreDataToFollow != pdFALSE );
+
+        }
+    }
+
 }
 
