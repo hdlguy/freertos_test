@@ -15,7 +15,11 @@ module top (
     output  logic       ddr3_sdram_ras_n,
     output  logic       ddr3_sdram_reset_n,
     output  logic       ddr3_sdram_we_n,
+    //
+    output  logic[3:0]  led,
     //input   logic[3:0]  dip_switches_4bits_tri_i,
+    //input   logic[3:0]  push_buttons_4bits_tri_i,
+    //
     output  logic       eth_mdio_mdc_mdc,
     inout   logic       eth_mdio_mdc_mdio_io,
     input   logic       eth_mii_col,
@@ -29,14 +33,14 @@ module top (
     output  logic       eth_mii_tx_en,
     output  logic[3:0]  eth_mii_txd,
     output  logic       eth_refclk,
-    output  logic[3:0]  led,
-    //input   logic[3:0]  push_buttons_4bits_tri_i,
+    //
     inout   logic       qspi_flash_io0_io,
     inout   logic       qspi_flash_io1_io,
     inout   logic       qspi_flash_io2_io,
     inout   logic       qspi_flash_io3_io,
     inout   logic       qspi_flash_sck_io,
     inout   logic       qspi_flash_ss_io,
+    //
     input   logic       resetn,
     input   logic       sys_clock,
     input   logic       usb_uart_rxd,
@@ -51,25 +55,25 @@ module top (
     IOBUF qspi_flash_sck_iobuf        (.I(qspi_flash_sck_o), .IO(qspi_flash_sck_io), .O(qspi_flash_sck_i), .T(qspi_flash_sck_t));
     IOBUF qspi_flash_ss_iobuf         (.I(qspi_flash_ss_o),  .IO(qspi_flash_ss_io),  .O(qspi_flash_ss_i),  .T(qspi_flash_ss_t));
 
-    logic [31:0]M06_AXI_araddr;
-    logic [2:0]M06_AXI_arprot;
-    logic [0:0]M06_AXI_arready;
-    logic [0:0]M06_AXI_arvalid;
-    logic [31:0]M06_AXI_awaddr;
-    logic [2:0]M06_AXI_awprot;
-    logic [0:0]M06_AXI_awready;
-    logic [0:0]M06_AXI_awvalid;
-    logic [0:0]M06_AXI_bready;
-    logic [1:0]M06_AXI_bresp;
-    logic [0:0]M06_AXI_bvalid;
-    logic [31:0]M06_AXI_rdata;
-    logic [0:0]M06_AXI_rready;
-    logic [1:0]M06_AXI_rresp;
-    logic [0:0]M06_AXI_rvalid;
-    logic [31:0]M06_AXI_wdata;
-    logic [0:0]M06_AXI_wready;
-    logic [3:0]M06_AXI_wstrb;
-    logic [0:0]M06_AXI_wvalid;
+    logic [31:0]    M00_AXI_araddr;
+    logic [2:0]     M00_AXI_arprot;
+    logic [0:0]     M00_AXI_arready;
+    logic [0:0]     M00_AXI_arvalid;
+    logic [31:0]    M00_AXI_awaddr;
+    logic [2:0]     M00_AXI_awprot;
+    logic [0:0]     M00_AXI_awready;
+    logic [0:0]     M00_AXI_awvalid;
+    logic [0:0]     M00_AXI_bready;
+    logic [1:0]     M00_AXI_bresp;
+    logic [0:0]     M00_AXI_bvalid;
+    logic [31:0]    M00_AXI_rdata;
+    logic [0:0]     M00_AXI_rready;
+    logic [1:0]     M00_AXI_rresp;
+    logic [0:0]     M00_AXI_rvalid;
+    logic [31:0]    M00_AXI_wdata;
+    logic [0:0]     M00_AXI_wready;
+    logic [3:0]     M00_AXI_wstrb;
+    logic [0:0]     M00_AXI_wvalid;
     logic axi_aclk;
     logic [0:0]axi_aresetn;
 
@@ -90,28 +94,29 @@ module top (
         .ddr3_sdram_reset_n(ddr3_sdram_reset_n),
         .ddr3_sdram_we_n(ddr3_sdram_we_n),
         // axi interface to register file.
-        .M06_AXI_araddr(M06_AXI_araddr),
-        .M06_AXI_arprot(M06_AXI_arprot),
-        .M06_AXI_arready(M06_AXI_arready),
-        .M06_AXI_arvalid(M06_AXI_arvalid),
-        .M06_AXI_awaddr(M06_AXI_awaddr),
-        .M06_AXI_awprot(M06_AXI_awprot),
-        .M06_AXI_awready(M06_AXI_awready),
-        .M06_AXI_awvalid(M06_AXI_awvalid),
-        .M06_AXI_bready(M06_AXI_bready),
-        .M06_AXI_bresp(M06_AXI_bresp),
-        .M06_AXI_bvalid(M06_AXI_bvalid),
-        .M06_AXI_rdata(M06_AXI_rdata),
-        .M06_AXI_rready(M06_AXI_rready),
-        .M06_AXI_rresp(M06_AXI_rresp),
-        .M06_AXI_rvalid(M06_AXI_rvalid),
-        .M06_AXI_wdata(M06_AXI_wdata),
-        .M06_AXI_wready(M06_AXI_wready),
-        .M06_AXI_wstrb(M06_AXI_wstrb),
-        .M06_AXI_wvalid(M06_AXI_wvalid),
+        .M00_AXI_araddr     (M00_AXI_araddr),
+        .M00_AXI_arprot     (M00_AXI_arprot),
+        .M00_AXI_arready    (M00_AXI_arready),
+        .M00_AXI_arvalid    (M00_AXI_arvalid),
+        .M00_AXI_awaddr     (M00_AXI_awaddr),
+        .M00_AXI_awprot     (M00_AXI_awprot),
+        .M00_AXI_awready    (M00_AXI_awready),
+        .M00_AXI_awvalid    (M00_AXI_awvalid),
+        .M00_AXI_bready     (M00_AXI_bready),
+        .M00_AXI_bresp      (M00_AXI_bresp),
+        .M00_AXI_bvalid     (M00_AXI_bvalid),
+        .M00_AXI_rdata      (M00_AXI_rdata),
+        .M00_AXI_rready     (M00_AXI_rready),
+        .M00_AXI_rresp      (M00_AXI_rresp),
+        .M00_AXI_rvalid     (M00_AXI_rvalid),
+        .M00_AXI_wdata      (M00_AXI_wdata),
+        .M00_AXI_wready     (M00_AXI_wready),
+        .M00_AXI_wstrb      (M00_AXI_wstrb),
+        .M00_AXI_wvalid     (M00_AXI_wvalid),
         .axi_aclk(axi_aclk),
         .axi_aresetn(axi_aresetn),
         //.dip_switches_4bits_tri_i(dip_switches_4bits_tri_i),
+        //.push_buttons_4bits_tri_i(push_buttons_4bits_tri_i),
         .eth_mdio_mdc_mdc(eth_mdio_mdc_mdc),
         .eth_mdio_mdc_mdio_i(eth_mdio_mdc_mdio_i),
         .eth_mdio_mdc_mdio_o(eth_mdio_mdc_mdio_o),
@@ -127,7 +132,7 @@ module top (
         .eth_mii_tx_en(eth_mii_tx_en),
         .eth_mii_txd(eth_mii_txd),
         .eth_refclk(eth_refclk),
-        //.push_buttons_4bits_tri_i(push_buttons_4bits_tri_i),
+        //
         .qspi_flash_io0_i(qspi_flash_io0_i),
         .qspi_flash_io0_o(qspi_flash_io0_o),
         .qspi_flash_io0_t(qspi_flash_io0_t),
@@ -146,29 +151,22 @@ module top (
         .qspi_flash_ss_i(qspi_flash_ss_i),
         .qspi_flash_ss_o(qspi_flash_ss_o),
         .qspi_flash_ss_t(qspi_flash_ss_t),
+        //
         .sys_clock(sys_clock),
         .resetn(resetn),
         .usb_uart_rxd(usb_uart_rxd),
         .usb_uart_txd(usb_uart_txd)
     );
-    
-//    eth_ila eth_ila_inst (.clk(axi_aclk), 
-//        .probe0({eth_mdio_mdc_mdc,eth_mdio_mdc_mdio_i,eth_mdio_mdc_mdio_o,eth_mdio_mdc_mdio_t}),
-//        .probe1({eth_mii_col, eth_mii_crs, eth_mii_rst_n, 1'b0, eth_mii_rx_dv, eth_mii_rx_er, eth_mii_rxd, 1'b0, eth_mii_tx_en, eth_mii_txd}) // 16
-//    );
 
 
 
     localparam int Nreg = 16;
     localparam int Nreg_addr = $clog2(Nreg) + 2;
-
     logic [Nreg-1:0][31:0] slv_reg, slv_read;
 
 
     assign slv_read[0] = 32'h07010100;
     assign slv_read[1] = 32'hdeadbeef;
-//    assign slv_read[0] = 32'h53524556; // VERS
-//    assign slv_read[1] = 32'h314e4f49; // ION1
     
     assign led = slv_reg[2][3:0];
 
@@ -187,25 +185,25 @@ module top (
 		.S_AXI_ACLK    (axi_aclk),
 		.S_AXI_ARESETN (axi_aresetn),
         //
-		.S_AXI_ARADDR  (M06_AXI_araddr ),
-		.S_AXI_ARPROT  (M06_AXI_arprot ),
-		.S_AXI_ARREADY (M06_AXI_arready),
-		.S_AXI_ARVALID (M06_AXI_arvalid),
-		.S_AXI_AWADDR  (M06_AXI_awaddr ),
-		.S_AXI_AWPROT  (M06_AXI_awprot ),
-		.S_AXI_AWREADY (M06_AXI_awready),
-		.S_AXI_AWVALID (M06_AXI_awvalid),
-		.S_AXI_BREADY  (M06_AXI_bready ),
-		.S_AXI_BRESP   (M06_AXI_bresp  ),
-		.S_AXI_BVALID  (M06_AXI_bvalid ),
-		.S_AXI_RDATA   (M06_AXI_rdata  ),
-		.S_AXI_RREADY  (M06_AXI_rready ),
-		.S_AXI_RRESP   (M06_AXI_rresp  ),
-		.S_AXI_RVALID  (M06_AXI_rvalid ),
-		.S_AXI_WDATA   (M06_AXI_wdata  ),
-		.S_AXI_WREADY  (M06_AXI_wready ),
-		.S_AXI_WSTRB   (M06_AXI_wstrb  ),
-		.S_AXI_WVALID  (M06_AXI_wvalid )
+		.S_AXI_ARADDR  (M00_AXI_araddr ),
+		.S_AXI_ARPROT  (M00_AXI_arprot ),
+		.S_AXI_ARREADY (M00_AXI_arready),
+		.S_AXI_ARVALID (M00_AXI_arvalid),
+		.S_AXI_AWADDR  (M00_AXI_awaddr ),
+		.S_AXI_AWPROT  (M00_AXI_awprot ),
+		.S_AXI_AWREADY (M00_AXI_awready),
+		.S_AXI_AWVALID (M00_AXI_awvalid),
+		.S_AXI_BREADY  (M00_AXI_bready ),
+		.S_AXI_BRESP   (M00_AXI_bresp  ),
+		.S_AXI_BVALID  (M00_AXI_bvalid ),
+		.S_AXI_RDATA   (M00_AXI_rdata  ),
+		.S_AXI_RREADY  (M00_AXI_rready ),
+		.S_AXI_RRESP   (M00_AXI_rresp  ),
+		.S_AXI_RVALID  (M00_AXI_rvalid ),
+		.S_AXI_WDATA   (M00_AXI_wdata  ),
+		.S_AXI_WREADY  (M00_AXI_wready ),
+		.S_AXI_WSTRB   (M00_AXI_wstrb  ),
+		.S_AXI_WVALID  (M00_AXI_wvalid )
 	);
 
 
