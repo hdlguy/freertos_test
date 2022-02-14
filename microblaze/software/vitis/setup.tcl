@@ -18,13 +18,18 @@ setws ./workspace
 
 platform create -name "freertos_plat"    -hw $hw -proc $proc -os freertos
 
-app create -name freertos_test -platform freertos_plat -domain freertos_domain -template "Empty Application(C)"
-file link -symbolic ./workspace/freertos_test/src/main.c                ../../../src/freertos_test/main.c
-file link -symbolic ./workspace/freertos_test/src/FreeRTOS_CLI.h        ../../../src/freertos_test/FreeRTOS_CLI.h
-file link -symbolic ./workspace/freertos_test/src/FreeRTOS_CLI.c        ../../../src/freertos_test/FreeRTOS_CLI.c
-file delete  -force ./workspace/freertos_test/src/lscript.ld
-file link -symbolic ./workspace/freertos_test/src/lscript.ld            ../../../src/freertos_test/lscript.ld
+#app create -name freertos_test -platform freertos_plat -domain freertos_domain -template "Empty Application(C)"
+#file link -symbolic ./workspace/freertos_test/src/main.c                ../../../src/freertos_test/main.c
+#file delete  -force ./workspace/freertos_test/src/lscript.ld
+#file link -symbolic ./workspace/freertos_test/src/lscript.ld            ../../../src/freertos_test/lscript.ld
 
+
+app create -name freertos_cli -platform freertos_plat -domain freertos_domain -template "Empty Application(C)"
+file link -symbolic ./workspace/freertos_cli/src/main.c                ../../../src/freertos_cli/main.c
+file link -symbolic ./workspace/freertos_cli/src/FreeRTOS_CLI.h        ../../../src/freertos_cli/FreeRTOS_CLI.h
+file link -symbolic ./workspace/freertos_cli/src/FreeRTOS_CLI.c        ../../../src/freertos_cli/FreeRTOS_CLI.c
+file delete  -force ./workspace/freertos_cli/src/lscript.ld
+file link -symbolic ./workspace/freertos_cli/src/lscript.ld            ../../../src/freertos_cli/lscript.ld
 
 
 #app create -name lwip_echo -platform standalone_plat -domain standalone_domain -template "Empty Application(C)"
