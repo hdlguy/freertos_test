@@ -7,6 +7,8 @@
 #include "xil_printf.h"
 #include "xparameters.h"
 
+#include "FreeRTOS_CLI.h"
+
 #define TIMER_ID	1
 #define DELAY_10_SECONDS	10000UL
 #define DELAY_1_SECOND		1000UL
