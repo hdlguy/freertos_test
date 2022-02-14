@@ -24,12 +24,20 @@ platform create -name "freertos_plat"    -hw $hw -proc $proc -os freertos
 #file link -symbolic ./workspace/freertos_test/src/lscript.ld            ../../../src/freertos_test/lscript.ld
 
 
-app create -name freertos_cli -platform freertos_plat -domain freertos_domain -template "Empty Application(C)"
-file link -symbolic ./workspace/freertos_cli/src/main.c                ../../../src/freertos_cli/main.c
-file link -symbolic ./workspace/freertos_cli/src/FreeRTOS_CLI.h        ../../../src/freertos_cli/FreeRTOS_CLI.h
-file link -symbolic ./workspace/freertos_cli/src/FreeRTOS_CLI.c        ../../../src/freertos_cli/FreeRTOS_CLI.c
-file delete  -force ./workspace/freertos_cli/src/lscript.ld
-file link -symbolic ./workspace/freertos_cli/src/lscript.ld            ../../../src/freertos_cli/lscript.ld
+#app create -name freertos_cli -platform freertos_plat -domain freertos_domain -template "Empty Application(C)"
+#file link -symbolic ./workspace/freertos_cli/src/main.c                ../../../src/freertos_cli/main.c
+#file link -symbolic ./workspace/freertos_cli/src/FreeRTOS_CLI.h        ../../../src/freertos_cli/FreeRTOS_CLI.h
+#file link -symbolic ./workspace/freertos_cli/src/FreeRTOS_CLI.c        ../../../src/freertos_cli/FreeRTOS_CLI.c
+#file delete  -force ./workspace/freertos_cli/src/lscript.ld
+#file link -symbolic ./workspace/freertos_cli/src/lscript.ld            ../../../src/freertos_cli/lscript.ld
+
+
+app create -name command_proc -platform freertos_plat -domain freertos_domain -template "Empty Application(C)"
+file link -symbolic ./workspace/command_proc/src/main.c                ../../../src/command_proc/main.c
+file link -symbolic ./workspace/command_proc/src/fpga.h                ../../../src/fpga.h
+file link -symbolic ./workspace/command_proc/src/platform.c            ../../../src/command_proc/platform.c
+file link -symbolic ./workspace/command_proc/src/platform.h            ../../../src/command_proc/platform.h
+file link -symbolic ./workspace/command_proc/src/platform_config.h     ../../../src/command_proc/platform_config.h
 
 
 #app create -name lwip_echo -platform standalone_plat -domain standalone_domain -template "Empty Application(C)"
