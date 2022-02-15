@@ -1,4 +1,4 @@
-updatemem -force -meminfo ../../implement/results/top.mmi  -bit ../../implement/results/top.bit -data ./workspace/freertos_test/Debug/freertos_test.elf -proc system_i/microblaze_0 -out ./download.bit 
+updatemem -force -meminfo ../../implement/results/top.mmi  -bit ../../implement/results/top.bit -data ./workspace/freertos_cli/Debug/freertos_cli.elf -proc system_i/microblaze_0 -out ./download.bit 
 
 echo "the_ROM_image: { ./download.bit }" >> bootgen754.bif
 
